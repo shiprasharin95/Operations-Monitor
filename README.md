@@ -30,6 +30,22 @@ Two channels, each used for what it is good at:
 
 The dashboard is never built on A2A: A2A answers are messages, not query results, and take seconds per call.
 
+## 1a. Benefits of this approach
+
+| Benefit | What it means in practice |
+|---|---|
+| **One place to look** | Operations, AMS and business users see IDoc errors and job failures together: one set of tiles, one trend, one failure list, one "Pull from Cloud ALM". |
+| **One Joule entry point** | "How are my integrations and jobs today?" is answered by one agent. Users do not need to know that two agents exist. |
+| **Existing monitors untouched** | The IDoc Monitor is not changed at all; the Job Monitor only grants a scope. Each keeps its own sync, HANA, roles and release cycle. |
+| **No data duplication** | The Operations Monitor stores nothing. It reads the monitors' HANA-backed APIs, so numbers are always identical to the source dashboards and never stale copies. |
+| **Deterministic figures** | Sums and merges only; no LLM computes a number. The Joule answer and the dashboard show the same values. |
+| **Security stays with the owner** | The caller's own identity is forwarded (XSUAA user token exchange / IAS token). Each monitor still enforces its own role collections. A user with only the job role sees job data and an "unavailable" marker for IDocs. |
+| **Fails soft** | If one monitor is down or refuses, the other still shows; the missing one is marked, not hidden. |
+| **Extensible** | A third monitor (e.g. interfaces, workflows) is one more client in `srv/backends.js` plus one branch in the orchestrator; dashboard and agent stay the same. |
+| **Drill-down preserved** | Each failure row links to the detail page in the original monitor (IDoc object page / job run with job log and AI analysis). |
+
+Trade-offs to be aware of: one more app to run and monitor; dashboard latency is the slower of the two monitors (both are called in parallel); and a user needs a role in each monitor to see its data.
+
 ## 2. Architecture
 
 ```
@@ -146,3 +162,48 @@ server.js                      Bootstrap: redirects, /health, A2A mount
 test/orchestrator.test.js      Agent and routing tests
 manifest.yml, xs-security.json, ias-a2a.json
 ```
+
+## 10. SAP Joule setup (step by step)
+
+Goal: a user asks Joule "How many IDocs and jobs failed today?" and gets one combined answer with a link to this dashboard. Pattern identical to the PO Monitor agent (`po_monitor_agent_a2a`).
+
+**A. Identity (IAS tenant `a21ttncfv`)**
+1. Groups: create `OpsMonitor_Viewer` (and optionally reuse `JobMonitor_Viewer` / `IDocMonitor_Viewer`). Add the users who may ask Joule. These groups arrive in the token's `groups` claim and are checked by the agent.
+2. Application "Operations Monitor A2A Agent" already exists (created by the `operations-monitor-identity` service instance, client ID `cbbf003a-5e27-490d-b45b-e72abbb8a194`, provided API `operations-read`).
+3. Proxy chain: on the **Joule** IAS application (or its `Joule_A2A_Proxy`), add a **dependency** to "Operations Monitor A2A Agent" with API `operations-read`. This lets Joule exchange the user's token for one whose audience is the agent.
+
+**B. BTP, Joule subaccount (`sap-joule-embedded-...`)**
+4. Destination `operations_monitor_agent_a2a`:
+   - URL `https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com`, Proxy `Internet`
+   - Authentication `OAuth2JWTBearer`, token service = IAS (`https://a21ttncfv.accounts.ondemand.com/oauth2/token`), client ID/secret of the Joule proxy app, the same values used by `po_monitor_agent_a2a`
+   - Additional property `HTML5.DynamicDestination=true` if the Joule capability requires it
+
+**C. Joule Studio (capability)**
+5. Create a capability "Operations Monitor" with scenario "Failed IDocs and jobs", example utterances: "How are my integrations and jobs today?", "How many IDocs failed this week?", "Which jobs failed in the last hour?".
+6. Add a function with an `agent-request` step: `system_alias: operations_monitor_agent_a2a`, `path: /a2a`, method `message/send`, pass the user's utterance as the text part.
+7. Render the answer: show `body['artifacts'][0]['parts'][0]['text']` as a Markdown message; if `body['artifacts'][0]['parts'][1]['data']['hasFailures']` show `['markdownTable']` as a second message. Failed/rejected tasks also carry a text artifact, so the same expression works.
+8. `joule deploy`, then test in the Joule chat panel.
+
+**D. Verify**
+- A user in `OpsMonitor_Viewer` gets a combined answer; a user without a group gets "You are not authorized to view operations data".
+- Agent logs show `a2a-auth-accepted` and `a2a-orchestration-complete` (no personal data is logged).
+
+## 11. SAP Build Work Zone (optional launchpad)
+
+Work Zone gives users one page with all three dashboards. It is optional; the Operations Monitor already works through its own URL.
+
+1. Subscribe to **SAP Build Work Zone, standard edition** in subaccount `sap-genai` and assign `Launchpad_Admin` to yourself.
+2. Create a **content provider** for the Cloud Foundry apps, or add each dashboard as a **URL app** in Content Manager:
+   - Operations Monitor: `https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/`
+   - Job Failure Monitor: `https://job-failure-monitor.cfapps.eu20-001.hana.ondemand.com/`
+   - IDoc Monitor: `https://bearingpointgmbh-sap-genai-genai-idoc-monitor.cfapps.eu20-001.hana.ondemand.com/`
+3. Create a **group** "Operations" and a **catalog** containing the three apps; assign the catalog to a **role** (e.g. `OpsMonitor_Viewer`) and the role to the users' role collections.
+4. Create a **page/space** "Operations" with the three tiles; optionally a **card** per monitor showing the error count (Work Zone cards can call `getOverview` / `getKpis` with `period='24H'`).
+5. Enable **Joule in Work Zone** so the chat panel is available on the same page as the dashboards.
+
+Single sign-on: all three apps use XSUAA with the same subaccount trust (IAS), so a Work Zone user logs in once.
+
+## 12. Change history
+
+1. Scaffolded the Operations Monitor, aggregation service, Fiori dashboard, orchestrator agent, BTP services and destinations.
+2. Job Monitor grants its `User` scope to this app, so `JobMonitor_Viewer` / `JobFailureMonitor_Viewer` users can open the dashboard without a new role.
