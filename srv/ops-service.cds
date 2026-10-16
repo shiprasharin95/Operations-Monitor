@@ -1,4 +1,6 @@
-@requires: 'User'
+// 'User' = OpsMonitor_Viewer; the second is the Job Monitor's User scope (foreign scope reference),
+// so JobMonitor_Viewer / JobFailureMonitor_Viewer users can open this dashboard without a new role.
+@requires: ['User', 'cloud-alm-job-failure-monitor!t78145.User']
 @path: 'ops'
 service OperationsService {
 

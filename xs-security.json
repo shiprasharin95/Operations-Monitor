@@ -8,6 +8,7 @@
     { "name": "$XSAPPNAME.User", "description": "Use the Operations Monitor dashboard" },
     { "name": "uaa.user", "description": "UAA" }
   ],
+  "foreign-scope-references": ["$XSAPPNAME(application,cloud-alm-job-failure-monitor).User"],
   "role-templates": [
     { "name": "OpsMonitorUser", "description": "Operations Monitor user", "scope-references": ["$XSAPPNAME.User", "uaa.user"] }
   ],

@@ -123,7 +123,7 @@ powershell -File scripts/create-destinations.ps1   # once, or to update the dest
 
 ## 8. Steps for you (cannot be done from the CLI)
 
-1. **Role collections.** BTP cockpit → Security → Role Collections → `OpsMonitor_Viewer` → add your user. You must also hold a role in each monitor you want to see: `JobMonitor_Viewer` (or `JobFailureMonitor_Viewer`) and the IDoc Monitor's viewer collection. Without the IDoc role the dashboard shows "You are not authorized in the IDoc Monitor" for that source.
+1. **Role collections.** Users with `JobMonitor_Viewer` or `JobFailureMonitor_Viewer` can already open this dashboard (the Job Monitor grants its `User` scope to this app; see `foreign-scope-references`). Alternatively add users to `OpsMonitor_Viewer`. You must also hold a role in each monitor you want to see: `JobMonitor_Viewer` (or `JobFailureMonitor_Viewer`) and the IDoc Monitor's viewer collection. Without the IDoc role the dashboard shows "You are not authorized in the IDoc Monitor" for that source.
 2. **Open** https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/ in a private window and check that both sources show data.
 3. **IAS groups** (for Joule): in IAS `a21ttncfv` create the group `OpsMonitor_Viewer` (or reuse `JobMonitor_Viewer` / `IDocMonitor_Viewer`) and add the users. Map each group to the BTP role collection of the same name (Security → Trust Configuration → IAS → Role Collection Mappings).
 4. **IAS proxy dependency** so Joule can call the agent with a user token: in IAS, on the Joule application add a dependency to "Operations Monitor A2A Agent" (API `operations-read`), the same way the PO Monitor agent was wired.
