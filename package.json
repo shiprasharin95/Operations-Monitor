@@ -1,0 +1,37 @@
+{
+  "name": "operations-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Operations Monitor: one dashboard and one A2A orchestrator agent over the IDoc Monitor and the Job Failure Monitor",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^0.3.14",
+    "@sap-cloud-sdk/connectivity": "^4.9.1",
+    "@sap-cloud-sdk/http-client": "^4.9.1",
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4",
+    "express": "^4",
+    "jose": "^6"
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^9"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "watch": "cds watch",
+    "test": "node --test test/orchestrator.test.js"
+  },
+  "cds": {
+    "folders": {
+      "app": "app",
+      "srv": "srv"
+    },
+    "requires": {
+      "auth": {
+        "kind": "jwt"
+      }
+    }
+  }
+}

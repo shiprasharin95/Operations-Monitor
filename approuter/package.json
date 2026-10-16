@@ -1,0 +1,6 @@
+{
+  "name": "operations-monitor-approuter",
+  "private": true,
+  "dependencies": { "@sap/approuter": "^20.5.0" },
+  "scripts": { "start": "node node_modules/@sap/approuter/approuter.js" }
+}

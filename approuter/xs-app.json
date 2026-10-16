@@ -1,0 +1,9 @@
+{
+  "welcomeFile": "/ops-monitor/webapp/index.html",
+  "authenticationMethod": "route",
+  "logout": { "logoutEndpoint": "/do/logout" },
+  "routes": [
+    { "source": "^/odata/(.*)$", "target": "/odata/$1", "destination": "srv-api", "authenticationType": "xsuaa", "csrfProtection": false },
+    { "source": "^/(.*)$", "target": "/$1", "destination": "srv-api", "authenticationType": "xsuaa" }
+  ]
+}

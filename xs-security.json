@@ -1,0 +1,17 @@
+{
+  "xsappname": "operations-monitor",
+  "tenant-mode": "dedicated",
+  "oauth2-configuration": {
+    "redirect-uris": ["https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/**"]
+  },
+  "scopes": [
+    { "name": "$XSAPPNAME.User", "description": "Use the Operations Monitor dashboard" },
+    { "name": "uaa.user", "description": "UAA" }
+  ],
+  "role-templates": [
+    { "name": "OpsMonitorUser", "description": "Operations Monitor user", "scope-references": ["$XSAPPNAME.User", "uaa.user"] }
+  ],
+  "role-collections": [
+    { "name": "OpsMonitor_Viewer", "description": "Operations Monitor viewer - map the IAS group OpsMonitor_Viewer to this collection", "role-template-references": ["$XSAPPNAME.OpsMonitorUser"] }
+  ]
+}

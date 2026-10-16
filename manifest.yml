@@ -1,0 +1,33 @@
+applications:
+  - name: operations-monitor-srv
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    stack: cflinuxfs5
+    buildpacks:
+      - nodejs_buildpack
+    command: npm start
+    health-check-type: http
+    health-check-http-endpoint: /health
+    routes:
+      - route: operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com
+    services:
+      - operations-monitor-destination
+      - operations-monitor-xsuaa
+      - operations-monitor-identity
+    env:
+      NODE_ENV: production
+      # Source monitors (destinations with OAuth2UserTokenExchange, created in the BTP cockpit)
+      IDOC_MONITOR_DESTINATION: IDOC_MONITOR_API
+      JOB_MONITOR_DESTINATION: JOB_MONITOR_API
+      JOB_MONITOR_A2A_DESTINATION: JOB_MONITOR_A2A
+      IDOC_DASHBOARD_URL: https://bearingpointgmbh-sap-genai-genai-idoc-monitor.cfapps.eu20-001.hana.ondemand.com/idoc-monitor/webapp/index.html
+      JOB_DASHBOARD_URL: https://job-failure-monitor.cfapps.eu20-001.hana.ondemand.com/job-monitor/webapp/index.html
+      DASHBOARD_URL: https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/ops-monitor/webapp/index.html
+      # Orchestrator A2A agent (IAS)
+      IAS_ISSUER: https://a21ttncfv.accounts.ondemand.com
+      IAS_AUDIENCE: cbbf003a-5e27-490d-b45b-e72abbb8a194
+      IAS_REQUIRED_API: none
+      IAS_GROUPS_CLAIM: groups
+      A2A_REQUIRED_GROUPS: OpsMonitor_Viewer,JobMonitor_Viewer,IDocMonitor_Viewer,JobMonitor_Admin,IDocMonitor_Admin
+      A2A_PUBLIC_URL: https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com

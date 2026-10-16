@@ -1,0 +1,164 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.f" xmlns:l="sap.ui.layout"
+  xmlns:viz="sap.viz.ui5.controls" xmlns:vizData="sap.viz.ui5.data" xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds"
+  controllerName="ops.monitor.ext.main.Main">
+
+  <f:DynamicPage id="page" headerExpanded="true" showFooter="false" fitContent="false">
+    <f:title>
+      <f:DynamicPageTitle>
+        <f:heading><Title text="Operations Monitor" level="H2"/></f:heading>
+        <f:expandedContent>
+          <Text text="IDoc Monitor + Job Failure Monitor · Source: SAP Cloud ALM via each monitor's own sync"/>
+        </f:expandedContent>
+        <f:snappedContent>
+          <Text text="{ui>/overview/error} failures · IDocs {ui>/overview/idocErrors} · Jobs {ui>/overview/jobErrors}"/>
+        </f:snappedContent>
+        <f:actions>
+          <HBox items="{ui>/overview/sources}" class="sapUiSmallMarginEnd">
+            <ObjectStatus class="sapUiTinyMarginEnd"
+              text="{ui>label}: {= ${ui>available} ? (${ui>lastSyncAt} ? 'synced ' + ${ui>lastSyncText} : 'no sync yet') : 'unavailable'}"
+              state="{= !${ui>available} || ${ui>lastSyncOk} === false ? 'Error' : 'Success'}"
+              icon="{= !${ui>available} ? 'sap-icon://disconnected' : 'sap-icon://synchronize'}"
+              tooltip="{= ${ui>message} || ${ui>lastSyncInfo}}"/>
+          </HBox>
+          <SegmentedButton id="periodSelector" selectedKey="{ui>/period}" selectionChange=".onPeriodChange">
+            <items>
+              <SegmentedButtonItem key="1H" text="1h"/><SegmentedButtonItem key="24H" text="24h"/>
+              <SegmentedButtonItem key="7D" text="7 days"/><SegmentedButtonItem key="30D" text="30 days"/>
+            </items>
+          </SegmentedButton>
+          <Switch state="{ui>/autoRefresh}" change=".onAutoRefreshToggle" customTextOn="Auto" customTextOff="Off" tooltip="Auto-refresh every 30 s"/>
+          <Button icon="sap-icon://refresh" tooltip="Refresh now" press=".onRefresh"/>
+          <Button icon="sap-icon://download-from-cloud" text="Pull from Cloud ALM" type="Emphasized" press=".onSyncAll" busy="{ui>/syncing}"/>
+        </f:actions>
+      </f:DynamicPageTitle>
+    </f:title>
+
+    <f:header>
+      <f:DynamicPageHeader pinnable="true">
+        <HBox wrap="Wrap" class="opsKpiBox">
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Total failures" subheader="{ui>/periodText}" press=".onTilePress" frameType="OneByOne">
+            <customData><core:CustomData key="source" value=""/></customData>
+            <TileContent footer="IDocs + jobs"><NumericContent value="{ui>/overview/error}" icon="sap-icon://error" withMargin="false" valueColor="Error"/></TileContent>
+          </GenericTile>
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="IDoc errors" subheader="{ui>/periodText}" press=".onTilePress" frameType="OneByOne">
+            <customData><core:CustomData key="source" value="idoc"/></customData>
+            <TileContent footer="Open IDoc Monitor"><NumericContent value="{ui>/overview/idocErrors}" icon="sap-icon://document" withMargin="false" valueColor="{= ${ui>/overview/idocErrors} > 0 ? 'Error' : 'Good'}"/></TileContent>
+          </GenericTile>
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Job failures" subheader="{ui>/periodText}" press=".onTilePress" frameType="OneByOne">
+            <customData><core:CustomData key="source" value="job"/></customData>
+            <TileContent footer="Open Job Monitor"><NumericContent value="{ui>/overview/jobErrors}" icon="sap-icon://batch-payments" withMargin="false" valueColor="{= ${ui>/overview/jobErrors} > 0 ? 'Error' : 'Good'}"/></TileContent>
+          </GenericTile>
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Successful" subheader="{ui>/periodText}" frameType="OneByOne">
+            <TileContent footer="{ui>/overview/successRate}% success rate"><NumericContent value="{ui>/overview/success}" icon="sap-icon://sys-enter-2" withMargin="false" valueColor="Good"/></TileContent>
+          </GenericTile>
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="Warnings" subheader="{ui>/periodText}" frameType="OneByOne">
+            <TileContent footer="IDocs + jobs"><NumericContent value="{ui>/overview/warning}" icon="sap-icon://alert" withMargin="false" valueColor="Critical"/></TileContent>
+          </GenericTile>
+          <GenericTile class="sapUiTinyMarginEnd sapUiTinyMarginBottom" header="In Process" subheader="{ui>/periodText}" frameType="OneByOne">
+            <TileContent footer="Waiting / running"><NumericContent value="{ui>/overview/inProcess}" icon="sap-icon://pending" withMargin="false" valueColor="Neutral"/></TileContent>
+          </GenericTile>
+        </HBox>
+      </f:DynamicPageHeader>
+    </f:header>
+
+    <f:content>
+      <VBox>
+        <l:Grid defaultSpan="XL6 L6 M12 S12" vSpacing="0" hSpacing="1" class="sapUiSmallMarginBottom">
+          <Panel headerText="Failures over time (by source)" class="sapUiNoContentPadding opsChartPanel">
+            <viz:VizFrame id="trendChart" vizType="stacked_column" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%">
+              <viz:dataset>
+                <vizData:FlattenedDataset data="{ui>/trend}">
+                  <vizData:dimensions><vizData:DimensionDefinition name="Time" value="{ui>label}"/></vizData:dimensions>
+                  <vizData:measures>
+                    <vizData:MeasureDefinition name="IDoc errors" value="{ui>idocError}"/>
+                    <vizData:MeasureDefinition name="Job failures" value="{ui>jobError}"/>
+                  </vizData:measures>
+                </vizData:FlattenedDataset>
+              </viz:dataset>
+              <viz:feeds>
+                <vizFeeds:FeedItem uid="valueAxis" type="Measure" values="IDoc errors,Job failures"/>
+                <vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Time"/>
+              </viz:feeds>
+            </viz:VizFrame>
+          </Panel>
+          <Panel headerText="By message type / job (top 15, failures first)" class="sapUiNoContentPadding opsChartPanel">
+            <viz:VizFrame id="categoryChart" vizType="stacked_bar" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%">
+              <viz:dataset>
+                <vizData:FlattenedDataset data="{ui>/categories}">
+                  <vizData:dimensions><vizData:DimensionDefinition name="Category" value="{ui>label}"/></vizData:dimensions>
+                  <vizData:measures>
+                    <vizData:MeasureDefinition name="Success" value="{ui>success}"/>
+                    <vizData:MeasureDefinition name="Warning" value="{ui>warning}"/>
+                    <vizData:MeasureDefinition name="Error" value="{ui>error}"/>
+                  </vizData:measures>
+                </vizData:FlattenedDataset>
+              </viz:dataset>
+              <viz:feeds>
+                <vizFeeds:FeedItem uid="valueAxis" type="Measure" values="Success,Warning,Error"/>
+                <vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Category"/>
+              </viz:feeds>
+            </viz:VizFrame>
+          </Panel>
+        </l:Grid>
+
+        <Panel headerText="Top errors (both monitors)" expandable="true" expanded="true" class="sapUiSmallMarginBottom">
+          <Table items="{ui>/topErrors}" noDataText="No failures in the selected period" growing="true" growingThreshold="5">
+            <columns>
+              <Column width="9rem"><Text text="Source"/></Column>
+              <Column width="20rem"><Text text="Message type / Job"/></Column>
+              <Column><Text text="Error"/></Column>
+              <Column width="6rem" hAlign="End"><Text text="Count"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem>
+                <Text text="{ui>sourceLabel}" class="{= ${ui>source} === 'idoc' ? 'opsSourceIdoc' : 'opsSourceJob'}"/>
+                <Text text="{ui>category}" wrapping="true"/>
+                <Text text="{ui>errorText}" wrapping="true"/>
+                <ObjectNumber number="{ui>count}" state="Error"/>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </Panel>
+
+        <Panel headerText="Failures ({ui>/failureCount})" class="sapUiSmallMarginBottom">
+          <headerToolbar>
+            <OverflowToolbar>
+              <Title text="Failures ({ui>/failureCount})"/>
+              <ToolbarSpacer/>
+              <SegmentedButton selectedKey="{ui>/sourceFilter}" selectionChange=".onSourceFilter">
+                <items>
+                  <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
+                </items>
+              </SegmentedButton>
+              <SearchField width="16rem" liveChange=".onSearch" placeholder="Search object, error, system"/>
+            </OverflowToolbar>
+          </headerToolbar>
+          <MessageStrip text="{ui>/unavailableText}" type="Warning" visible="{= !!${ui>/unavailableText}}" class="sapUiTinyMarginBottom"/>
+          <Table id="failureTable" items="{ui>/failuresView}" noDataText="No failures in the selected period" growing="true" growingThreshold="25" sticky="ColumnHeaders">
+            <columns>
+              <Column width="8rem"><Text text="Source"/></Column>
+              <Column width="18rem"><Text text="Object"/></Column>
+              <Column width="11rem"><Text text="Type"/></Column>
+              <Column><Text text="Error reason"/></Column>
+              <Column width="12rem"><Text text="System"/></Column>
+              <Column width="12rem"><Text text="Partner / Scheduled by"/></Column>
+              <Column width="11rem" hAlign="End"><Text text="Time"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem type="Navigation" press=".onFailurePress">
+                <ObjectStatus text="{ui>sourceLabel}" state="{= ${ui>source} === 'idoc' ? 'Information' : 'Indication05'}" inverted="true"/>
+                <Text text="{ui>objectId}" wrapping="true"/>
+                <Text text="{ui>category}" wrapping="true"/>
+                <Text text="{ui>errorText}" wrapping="true" maxLines="3"/>
+                <Text text="{ui>system}" wrapping="true"/>
+                <Text text="{ui>partner}" wrapping="true"/>
+                <Text text="{ui>timeText}"/>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </Panel>
+      </VBox>
+    </f:content>
+  </f:DynamicPage>
+</mvc:View>

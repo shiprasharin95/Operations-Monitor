@@ -1,0 +1,9 @@
+{
+  "display-name": "Operations Monitor A2A Agent",
+  "multi-tenant": false,
+  "xsuaa-cross-consumption": false,
+  "oauth2-configuration": { "token-policy": { "access-token-format": "jwt" } },
+  "provided-apis": [
+    { "name": "operations-read", "description": "Read-only combined IDoc and job failure reports for SAP Joule" }
+  ]
+}

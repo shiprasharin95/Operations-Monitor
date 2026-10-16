@@ -1,0 +1,37 @@
+{
+  "_version": "1.59.0",
+  "sap.app": {
+    "id": "ops.monitor",
+    "type": "application",
+    "title": "Operations Monitor",
+    "description": "IDoc and application-job failures from SAP Cloud ALM in one dashboard",
+    "applicationVersion": { "version": "1.0.0" },
+    "dataSources": {
+      "mainService": { "uri": "/odata/v4/ops/", "type": "OData", "settings": { "odataVersion": "4.0" } }
+    }
+  },
+  "sap.ui": { "technology": "UI5", "fullWidth": true, "deviceTypes": { "desktop": true, "tablet": true, "phone": true } },
+  "sap.ui5": {
+    "flexEnabled": false,
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": { "sap.m": {}, "sap.f": {}, "sap.ui.core": {}, "sap.ui.layout": {}, "sap.fe.core": {}, "sap.viz": {} }
+    },
+    "contentDensities": { "compact": true, "cozy": true },
+    "resources": { "css": [{ "uri": "css/style.css" }] },
+    "models": {
+      "": { "dataSource": "mainService", "preload": true, "settings": { "operationMode": "Server", "autoExpandSelect": true, "earlyRequests": true } }
+    },
+    "routing": {
+      "config": {},
+      "routes": [{ "pattern": ":?query:", "name": "Main", "target": "Main" }],
+      "targets": {
+        "Main": {
+          "type": "Component", "id": "Main", "name": "sap.fe.core.fpm",
+          "options": { "settings": { "viewName": "ops.monitor.ext.main.Main", "contextPath": "/" } }
+        }
+      }
+    }
+  },
+  "sap.fiori": { "registrationIds": [], "archeType": "analytical" }
+}

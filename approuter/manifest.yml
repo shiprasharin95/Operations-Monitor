@@ -1,0 +1,15 @@
+applications:
+  - name: operations-monitor-router
+    memory: 256M
+    disk_quota: 256M
+    instances: 1
+    stack: cflinuxfs5
+    buildpacks:
+      - nodejs_buildpack
+    command: npm start
+    routes:
+      - route: operations-monitor.cfapps.eu20-001.hana.ondemand.com
+    services:
+      - operations-monitor-xsuaa
+    env:
+      destinations: '[{"name":"srv-api","url":"https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com","forwardAuthToken":true}]'

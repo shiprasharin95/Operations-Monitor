@@ -1,0 +1,8 @@
+node_modules/
+gen/
+mta_archives/
+*.mtar
+.cf/
+default-env.json
+.env
+*.log

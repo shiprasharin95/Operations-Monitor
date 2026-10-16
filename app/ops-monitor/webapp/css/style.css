@@ -1,0 +1,6 @@
+html, body { height: 100%; margin: 0; }
+.sapUiComponentContainer, .sapUiComponentContainer > div, .sapMNav, .sapMNav > .sapMNavItem, .sapUiView, .sapFDynamicPage { height: 100%; }
+.opsKpiBox .sapMGT { margin: 0 0.5rem 0.5rem 0; }
+.opsChartPanel .sapMPanelContent { padding: 0.25rem 0.5rem; }
+.opsSourceIdoc { color: #0070f2; font-weight: 600; }
+.opsSourceJob { color: #5d36ff; font-weight: 600; }
