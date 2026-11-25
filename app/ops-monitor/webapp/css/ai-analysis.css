@@ -1,0 +1,44 @@
+/* AI Analysis renderer — shared look in the IDoc / Job / Operations monitors */
+.aiAnalysis { padding: 0; gap: 1rem; }
+
+.aiDisclaimer { margin-bottom: 0.25rem; }
+.aiGenerateButton { margin-top: 0.5rem; }
+.aiMeta { color: #5b738b; font-size: 0.75rem; margin-top: 0.25rem; }
+
+.aiSection { margin-bottom: 1.25rem; }
+.aiSectionTitle { margin: 0 0 0.5rem; font-size: 1rem; font-weight: 600; color: #1d2d3e; }
+
+.aiTable .sapMListTblHeaderCell { background: #f5f6f7; }
+.aiTable .sapMListTblCell { vertical-align: top; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.aiKey { color: #5b738b; font-weight: 600; }
+.aiCauseTitle { font-weight: 600; }
+
+.aiRichText ul, .aiRichText ol { margin: 0.25rem 0 0.25rem 1.1rem; padding: 0; }
+.aiRichText li { margin-bottom: 0.3rem; line-height: 1.45; }
+.aiRichText p { margin: 0.25rem 0; line-height: 1.45; }
+.aiRichText code { background: #f5f6f7; padding: 0 0.2rem; border-radius: 0.2rem; }
+.aiRichText a { color: #0064d9; }
+
+/* Manually written corrections from HANA, shown inside the AI analysis */
+.aiCorrections { display: flex; flex-direction: column; gap: 0.75rem; }
+.aiCorrectionCard {
+  padding: 0.85rem 1rem;
+  background: #f3faf5;
+  border: 1px solid #cfe9d6;
+  border-left: 4px solid #1f8a3b;
+  border-radius: 0.6rem;
+}
+.aiCorrectionHead { gap: 0.25rem; padding-bottom: 0.5rem; border-bottom: 1px dashed #cfe9d6; }
+.aiCorrectionMeta { color: #456b52; font-size: 0.75rem; }
+.aiCorrectionText, .aiCorrectionText p { color: #17301f; font-size: 0.875rem; line-height: 1.5; margin-top: 0.5rem; }
+.aiCorrectionText code { background: #e3f2e7; padding: 0 0.2rem; border-radius: 0.2rem; }
+
+/* Full-screen AI Analysis dialog (same layout in all three monitors) */
+.aiDialog .sapMDialogScroll { height: 100%; }
+.aiDialog .sapMDialogScrollCont { height: 100%; padding: 0; }
+.aiDialogPage { height: 100%; }
+.aiDialogPage > .sapMPageEnableScrolling { padding: 1rem 1.5rem; box-sizing: border-box; }
+.aiDialogBody { gap: 0.5rem; }
+.aiDialogHeader { padding-bottom: 0.5rem; border-bottom: 1px solid #e5e5e5; }
+.aiDialogObject { font-size: 1.125rem; font-weight: 600; color: #1d2d3e; padding-top: 0.25rem; }
+.aiDialogSubtitle { color: #5b738b; font-size: 0.8125rem; }

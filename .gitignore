@@ -6,3 +6,6 @@ mta_archives/
 default-env.json
 .env
 *.log
+
+# added by cds
+.cdsrc-private.json

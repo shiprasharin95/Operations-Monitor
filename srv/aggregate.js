@@ -117,14 +117,14 @@ async function failures(period, top = 50) {
     if (source.key === 'idoc') {
       const rows = await api.list(source, 'IDocMessages', `$filter=statusGroup eq 'Error' and lastUpdatedAt ge ${since}&$orderby=lastUpdatedAt desc&$top=${limit}&$select=ID,idocNumber,messageType,direction,serviceName,statusText,errorText,lastUpdatedAt,senderPartner,receiverPartner`);
       return rows.map((r) => ({
-        source: 'idoc', sourceLabel: 'IDoc Monitor', objectId: r.idocNumber, category: r.messageType, system: r.serviceName,
+        source: 'idoc', sourceLabel: 'IDoc Monitor', sourceKey: String(r.ID), objectId: r.idocNumber, category: r.messageType, system: r.serviceName,
         state: 'Error', statusText: r.statusText, errorText: r.errorText || r.statusText, partner: [r.senderPartner, r.receiverPartner].filter(Boolean).join(' → '),
         occurredAt: r.lastUpdatedAt, detailUrl: `${source.dashboard}#/IDocMessages(${r.ID})`
       }));
     }
     const rows = await api.list(source, 'JobRuns', `$filter=statusGroup eq 'Error' and startedAt ge ${since}&$orderby=startedAt desc&$top=${limit}&$select=sourceRunKey,jobName,application,system,errorText,schedulerName,startedAt`);
     return rows.map((r) => ({
-      source: 'job', sourceLabel: 'Job Monitor', objectId: r.jobName, category: r.application, system: r.system,
+      source: 'job', sourceLabel: 'Job Monitor', sourceKey: r.sourceRunKey, objectId: r.jobName, category: r.application, system: r.system,
       state: 'Error', statusText: 'Failed', errorText: r.errorText, partner: r.schedulerName || '',
       occurredAt: r.startedAt, detailUrl: `${source.dashboard}#/JobRuns('${encodeURIComponent(r.sourceRunKey)}')`
     }));
@@ -138,6 +138,62 @@ async function failures(period, top = 50) {
   return { period: p, rows: rows.slice(0, limit), unavailable };
 }
 
+// Reads one failure from its monitor *as the calling user*, so AI analysis is only possible for
+// records the user may see, and the text sent to the AI comes from the monitor, not the browser.
+const IDOC_KEY = /^[0-9a-fA-F-]{1,64}$/;
+const JOB_KEY = /^[\w.:\-/|#]{1,200}$/;
+
+function badRequest(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function notFound(message) {
+  const error = new Error(message);
+  error.statusCode = 404;
+  return error;
+}
+
+// The IDoc status records carry the real error text (message class/number); they are the closest
+// equivalent of the Job Monitor's job log, so they are added to the AI input when readable.
+async function idocStatusText(id, fallback) {
+  try {
+    const records = await api.list(SOURCES.idoc, 'StatusRecords', `$filter=idoc_ID eq ${id}&$orderby=sequenceNo&$top=20&$select=sequenceNo,status,statusText,message,severity,messageClass,messageNumber`);
+    const lines = records
+      .filter((record) => record.message || record.statusText)
+      .map((record) => `[${record.sequenceNo || ''} ${record.status || ''}] ${[record.message || record.statusText, record.messageClass && record.messageNumber ? `(${record.messageClass} ${record.messageNumber})` : ''].filter(Boolean).join(' ')}`);
+    return lines.length ? lines.join('\n').slice(0, 3000) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function failureByKey(sourceKey, key) {
+  if (sourceKey === 'idoc') {
+    if (!IDOC_KEY.test(String(key || ''))) throw badRequest('Invalid IDoc key.');
+    const rows = await api.list(SOURCES.idoc, 'IDocMessages', `$filter=ID eq ${key}&$top=1&$select=ID,idocNumber,messageType,idocType,direction,status,statusText,statusMessage,errorText,senderPartner,receiverPartner,serviceName`);
+    const r = rows[0];
+    if (!r) throw notFound('IDoc not found or not visible for your user.');
+    const fallback = r.errorText || r.statusMessage || r.statusText;
+    return {
+      source: 'idoc', sourceKey: String(r.ID), objectId: r.idocNumber, category: r.messageType, idocType: r.idocType, direction: r.direction,
+      system: r.serviceName,
+      statusText: [r.status, r.statusText].filter(Boolean).join(' '), errorText: await idocStatusText(r.ID, fallback),
+      partner: [r.senderPartner, r.receiverPartner].filter(Boolean).join(' → ')
+    };
+  }
+  if (sourceKey === 'job') {
+    if (!JOB_KEY.test(String(key || ''))) throw badRequest('Invalid job run key.');
+    const literal = `'${String(key).replace(/'/g, "''")}'`;
+    const rows = await api.list(SOURCES.job, 'JobRuns', `$filter=sourceRunKey eq ${encodeURIComponent(literal)}&$top=1&$select=sourceRunKey,jobName,application,system,errorText,aiAnalysis,aiAnalyzedAt`);
+    const r = rows[0];
+    if (!r) throw notFound('Job run not found or not visible for your user.');
+    return { source: 'job', sourceKey: r.sourceRunKey, objectId: r.jobName, category: r.application, system: r.system, errorText: r.errorText, existingAnalysis: r.aiAnalysis || null, existingAnalyzedAt: r.aiAnalyzedAt || null };
+  }
+  throw badRequest(`Unsupported source '${sourceKey}'. Use idoc or job.`);
+}
+
 async function syncAll() {
   const results = await perSource((source) => api.syncNow(source));
   return Object.values(SOURCES).map((source) => {
@@ -149,4 +205,4 @@ async function syncAll() {
   });
 }
 
-module.exports = { PERIODS, normalizePeriod, overview, trend, categories, topErrors, failures, syncAll };
+module.exports = { PERIODS, normalizePeriod, overview, trend, categories, topErrors, failures, failureByKey, syncAll };

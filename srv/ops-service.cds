@@ -39,6 +39,7 @@ service OperationsService {
   type Failure {
     source      : String;
     sourceLabel : String;
+    sourceKey   : String;
     objectId    : String;
     category    : String;
     system      : String;
@@ -59,4 +60,49 @@ service OperationsService {
   function getTopErrors(period : String)  returns array of TopError;
   function getFailures(period : String, top : Integer) returns FailureList;
   action   syncAll() returns array of SyncResult;
+
+  // Manual corrections: the operations team's own fix steps, stored in HANA. They are shown again in
+  // the AI analysis of every failure with the same source + category.
+  type ManualCorrectionReference {
+    source         : String;
+    sourceKey      : String;
+    objectId       : String;
+    category       : String;
+    system         : String;
+    correctionText : LargeString;
+    createdBy      : String;
+    createdAt      : Timestamp;
+    modifiedBy     : String;
+    modifiedAt     : Timestamp;
+  }
+
+  // AI-generated possible resolution for one failure (IDoc or job), via SAP AI Core.
+  // The failure is re-read from its monitor as the calling user; only its error facts are sent to the AI.
+  type FailureAnalysis {
+    source             : String;
+    sourceKey          : String;
+    objectId           : String;
+    analysis           : LargeString;
+    analyzedAt         : String;
+    disclaimer         : String;
+    // Manually written corrections of failures with the same source + category, stored in HANA.
+    manualCorrections  : array of ManualCorrectionReference;
+  }
+
+  action   analyzeFailure(source : String, sourceKey : String, refresh : Boolean) returns FailureAnalysis;
+
+  // Read/save the manual correction of one failure. Saving an empty text deletes the entry.
+  // objectId / category / system / errorText are display metadata; they are re-read from the monitor
+  // when possible and only used as a fallback for the stored row.
+  type ManualCorrectionResult { source : String; sourceKey : String; correction : ManualCorrectionReference; }
+  function getManualCorrection(source : String, sourceKey : String) returns ManualCorrectionResult;
+  action   saveManualCorrection(
+    source         : String,
+    sourceKey      : String,
+    correctionText : String,
+    objectId       : String,
+    category       : String,
+    system         : String,
+    errorText      : String
+  ) returns ManualCorrectionResult;
 }

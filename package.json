@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@a2a-js/sdk": "^0.3.14",
+    "@cap-js/hana": "^2.8.3",
     "@sap-cloud-sdk/connectivity": "^4.9.1",
     "@sap-cloud-sdk/http-client": "^4.9.1",
     "@sap/cds": "^9",
@@ -16,21 +17,34 @@
     "jose": "^6"
   },
   "devDependencies": {
+    "@cap-js/sqlite": "^2.4.3",
     "@sap/cds-dk": "^9"
   },
   "scripts": {
     "start": "node server.js",
     "watch": "cds watch",
-    "test": "node --test test/orchestrator.test.js"
+    "test": "node --test test/orchestrator.test.js test/corrections.test.js"
   },
   "cds": {
     "folders": {
       "app": "app",
       "srv": "srv"
     },
+    "fiori": {
+      "lean_draft": true
+    },
     "requires": {
       "auth": {
         "kind": "jwt"
+      },
+      "db": {
+        "kind": "hana",
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": ":memory:"
+          }
+        }
       }
     }
   }

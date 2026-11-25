@@ -5,7 +5,7 @@ One dashboard and one Joule agent over two existing monitors on SAP BTP:
 - **IDoc Monitor** (`idoc-monitor-srv`): IDocs from SAP Cloud ALM Integration & Exception Monitoring. **Not changed.**
 - **Job Failure Monitor** (`JOB_Failure_Dashboard`): failed S/4HANA Cloud application jobs from SAP Cloud ALM Job & Automation Monitoring.
 
-The Operations Monitor stores no data. It is a thin app that asks both monitors as the logged-in user and merges the answers.
+The Operations Monitor stores no monitor data. It is a thin app that asks both monitors as the logged-in user and merges the answers. The single exception is the **Manual Corrections** the user types in: those are written to this app's own HANA (`ops.monitor.ManualCorrections`) so they can be shown again in the AI analysis of a similar failure.
 
 **Dashboard:** https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/
 **Agent card:** https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com/.well-known/agent-card.json
@@ -37,7 +37,7 @@ The dashboard is never built on A2A: A2A answers are messages, not query results
 | **One place to look** | Operations, AMS and business users see IDoc errors and job failures together: one set of tiles, one trend, one failure list, one "Pull from Cloud ALM". |
 | **One Joule entry point** | "How are my integrations and jobs today?" is answered by one agent. Users do not need to know that two agents exist. |
 | **Existing monitors untouched** | The IDoc Monitor is not changed at all; the Job Monitor only grants a scope. Each keeps its own sync, HANA, roles and release cycle. |
-| **No data duplication** | The Operations Monitor stores nothing. It reads the monitors' HANA-backed APIs, so numbers are always identical to the source dashboards and never stale copies. |
+| **No data duplication** | The Operations Monitor stores no monitor data. It reads the monitors' HANA-backed APIs, so numbers are always identical to the source dashboards and never stale copies. The only persisted rows are the manual corrections users type in, which have no source. |
 | **Deterministic figures** | Sums and merges only; no LLM computes a number. The Joule answer and the dashboard show the same values. |
 | **Security stays with the owner** | The caller's own identity is forwarded (XSUAA user token exchange / IAS token). Each monitor still enforces its own role collections. A user with only the job role sees job data and an "unavailable" marker for IDocs. |
 | **Fails soft** | If one monitor is down or refuses, the other still shows; the missing one is marked, not hidden. |
@@ -78,7 +78,9 @@ Because the IDoc Monitor is unchanged and has no A2A endpoint, the orchestrator 
 - **Tiles:** Total failures · IDoc errors · Job failures · Successful (with success rate) · Warnings · In Process. The first three filter the failure list.
 - **Charts:** failures over time stacked by source; failures by message type / job (top 15, failures first).
 - **Top errors** across both monitors with a Source column.
-- **Failure list:** Source, Object (IDoc number / job name), Type, Error reason, System, Partner / Scheduled by, Time; source filter (All / IDocs / Jobs) and search. Clicking a row opens the detail page in the original monitor (IDoc object page or job run page) in a new tab, so both existing dashboards remain the drill-downs.
+- **Failure list:** Source, Object (IDoc number / job name), Type, Error reason, System, Partner / Scheduled by, Time, **AI Analysis**; source filter (All / IDocs / Jobs) and search. Clicking a row opens the detail page in the original monitor (IDoc object page or job run page) in a new tab, so both existing dashboards remain the drill-downs.
+- **AI Analysis:** the *Analyze* button on each row switches to the **AI Analysis** tab (the app opens on **Dashboard**; the tab bar holds Dashboard · AI Analysis · Manual Corrections). The tab lists the same failures, filtered by its own All / IDocs / Jobs switch and search, and shows the selected failure's analysis inline on the right: the same content and wording the Job Monitor shows on its detail page (overview, documented failure causes, at most two likely root causes with verification and documented resolution, recommended investigation steps). *Generate AI Analysis* (re)creates it from official SAP documentation; for jobs the analysis stored on the run by the Job Monitor is reused, so both dashboards show the same text. The failure is re-read from its monitor as the calling user before anything is sent to the AI.
+- **Manual Corrections:** a third tab (after AI Analysis) listing the same failures. Pick one, type the steps that fixed it in a free-text field, and save. The text is written to this app's HANA (`ops.monitor.ManualCorrections`, one row per failure, upsert). A saved correction is shown again as **Manual Corrections To Refer** at the end of the AI analysis of every failure with the same source and the same message type / job name, so the operator who hits the same error next reads what worked last time. Emptying the text and saving deletes the row. This tab stores nothing but what the user types; it never copies error data from the monitors.
 
 ### OData service `/odata/v4/ops` (`srv/ops-service.cds`)
 
@@ -89,6 +91,9 @@ Because the IDoc Monitor is unchanged and has no A2A endpoint, the orchestrator 
 | `getCategories(period)` | top 15 message types / jobs with success/warning/error |
 | `getTopErrors(period)` | top 15 errors across both, with source |
 | `getFailures(period, top)` | merged failure rows (newest first) + list of unavailable sources |
+| `analyzeFailure(source, sourceKey, refresh)` | AI root-cause analysis for one failure (`idoc` or `job`); the failure is re-read from its monitor as the calling user, only its error facts (IDoc number, message/IDoc type, direction, partners, status, status-record messages / job name, application, error text) are sent to SAP AI Core. Also returns `manualCorrections`: the correction stored for this failure, then up to three stored for the same source and category |
+| `getManualCorrection(source, sourceKey)` | the stored correction for one failure (`correctionText`, author, date) or an empty text |
+| `saveManualCorrection(source, sourceKey, correctionText, objectId, category, system, errorText)` | upserts the correction for one failure, or deletes it when `correctionText` is empty. The metadata parameters are only used when the monitor cannot be re-read |
 | `syncAll()` | result of `syncNow` on each monitor |
 
 Both monitors use identical period codes and time-bucket keys, so merging is by key with no estimation.
@@ -109,9 +114,10 @@ Both monitors use identical period codes and time-bucket keys, so merging is by 
 | Backend | `operations-monitor-srv` → `operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com` |
 | Approuter (URL users open) | `operations-monitor-router` → `operations-monitor.cfapps.eu20-001.hana.ondemand.com` |
 | XSUAA | `operations-monitor-xsuaa` (role collection `OpsMonitor_Viewer`) |
-| Destination service | `operations-monitor-destination` with `IDOC_MONITOR_API`, `JOB_MONITOR_API`, `JOB_MONITOR_A2A` (created by `scripts/create-destinations.ps1`) |
+| Destination service | `operations-monitor-destination` with `IDOC_MONITOR_API`, `JOB_MONITOR_API`, `JOB_MONITOR_A2A`, `GENERATIVE_AI_HUB` (created by `scripts/create-destinations.ps1`) |
 | IAS | `operations-monitor-identity` → IAS app "Operations Monitor A2A Agent" |
-| Service keys used by the destinations | `idoc-monitor-auth/ops-monitor-link`, `cloud-alm-job-monitor-xsuaa/ops-monitor-link`, `operations-monitor-destination/ops-admin-key` |
+| HANA (HDI container) | `operations-monitor-db` → holds only `ops.monitor.ManualCorrections` |
+| Service keys used by the destinations | `idoc-monitor-auth/ops-monitor-link`, `cloud-alm-job-monitor-xsuaa/ops-monitor-link`, `operations-monitor-destination/ops-admin-key`, AI Core key for `GENERATIVE_AI_HUB` |
 
 All apps run on `cflinuxfs5`.
 
@@ -120,12 +126,15 @@ All apps run on `cflinuxfs5`.
 ```powershell
 npm install
 npm test
+cf create-service hana hdi-shared operations-monitor-db   # once
+cds deploy --to hana                                      # creates the HDI container objects
 cf push                       # backend (serves the Fiori app from app/)
 cd approuter; cf push -f manifest.yml; cd ..
 powershell -File scripts/create-destinations.ps1   # once, or to update the destinations
 ```
 
-`manifest.yml` carries all settings (destination names, dashboard URLs, IAS issuer/audience, required groups).
+`manifest.yml` carries all settings (destination names, dashboard URLs, IAS issuer/audience, required groups, AI destination/deployment) and binds `operations-monitor-db`.
+Locally `cds.requires.db` falls back to sqlite (in memory), so `cds watch` needs no HANA.
 
 ## 7. Steps done by the implementation
 
@@ -134,8 +143,9 @@ powershell -File scripts/create-destinations.ps1   # once, or to update the dest
 3. Built the unified Fiori dashboard.
 4. Built the orchestrator A2A agent with IAS login and tests.
 5. Created XSUAA, Destination and IAS instances; deployed backend and approuter on clean routes.
-6. Created the three destinations with user token exchange.
+6. Created the destinations with user token exchange.
 7. Verified: health 200, agent card 200, `/a2a` and OData refuse calls without login (401), dashboard reachable behind login.
+8. Added AI analysis for IDocs (`analyzeFailure` action, `srv/ai.js`) with the same content and wording as the Job Monitor's AI Analysis tab; job analyses reuse the text the Job Monitor stored on the run.
 
 ## 8. Steps for you (cannot be done from the CLI)
 
@@ -151,9 +161,11 @@ powershell -File scripts/create-destinations.ps1   # once, or to update the dest
 ```
 app/ops-monitor/webapp/        Fiori app (manifest, Component, ext/main custom page)
 approuter/                     Approuter (xs-app.json, manifest.yml)
+db/manual-corrections.cds      Only persisted entity: ops.monitor.ManualCorrections
 scripts/create-destinations.ps1  Creates the three destinations from service keys
 srv/backends.js                Clients for both monitors (user token exchange)
 srv/aggregate.js               Deterministic merge of both monitors
+srv/corrections.js             Read/write manual corrections (HANA / sqlite)
 srv/ops-service.cds|js         OData aggregation service
 srv/a2a/auth.js                IAS token validation + group check
 srv/a2a/orchestrator.js        Routing, fan-out (A2A + OData), merge
@@ -207,3 +219,4 @@ Single sign-on: all three apps use XSUAA with the same subaccount trust (IAS), s
 
 1. Scaffolded the Operations Monitor, aggregation service, Fiori dashboard, orchestrator agent, BTP services and destinations.
 2. Job Monitor grants its `User` scope to this app, so `JobMonitor_Viewer` / `JobFailureMonitor_Viewer` users can open the dashboard without a new role.
+3. Added the **Manual Corrections** tab with its HANA entity `ops.monitor.ManualCorrections`, the `getManualCorrection` / `saveManualCorrection` operations, and the "Manual Corrections To Refer" block in the AI analysis. This is the only data this app persists.

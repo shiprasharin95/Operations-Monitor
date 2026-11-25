@@ -1,6 +1,176 @@
+/* ---------------------------------------------------------------- base */
 html, body { height: 100%; margin: 0; }
 .sapUiComponentContainer, .sapUiComponentContainer > div, .sapMNav, .sapMNav > .sapMNavItem, .sapUiView, .sapFDynamicPage { height: 100%; }
-.opsKpiBox .sapMGT { margin: 0 0.5rem 0.5rem 0; }
-.opsChartPanel .sapMPanelContent { padding: 0.25rem 0.5rem; }
-.opsSourceIdoc { color: #0070f2; font-weight: 600; }
-.opsSourceJob { color: #5d36ff; font-weight: 600; }
+
+:root {
+  --ops-navy: #10243d;
+  --ops-ink: #1d2d3e;
+  --ops-muted: #5b738b;
+  --ops-line: #e3e8ee;
+  --ops-idoc: #0070f2;
+  --ops-job: #6b3fd4;
+  --ops-success: #1f8a3b;
+  --ops-warning: #d97500;
+  --ops-error: #c8140a;
+  --ops-surface: #ffffff;
+  --ops-surface-alt: #f7f9fc;
+  --ops-radius: 0.75rem;
+  --ops-shadow: 0 1px 2px rgba(16, 36, 61, 0.06), 0 6px 18px rgba(16, 36, 61, 0.06);
+  --ops-gradient: linear-gradient(135deg, #0b2545 0%, #123a63 52%, #1a5c86 100%);
+}
+
+/* ---------------------------------------------------------------- header */
+.opsPage .sapFDynamicPageTitle {
+  background: var(--ops-gradient);
+  box-shadow: var(--ops-shadow);
+}
+.opsPage .sapFDynamicPageTitle .sapMTitle,
+.opsPage .sapFDynamicPageTitle .sapMTitleStyleH2,
+.opsPage .sapFDynamicPageTitle .sapMText {
+  color: #ffffff;
+}
+.opsPage .sapFDynamicPageTitle .sapMTitle {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.opsPage .sapFDynamicPageTitle .sapMObjStatus .sapMObjStatusText,
+.opsPage .sapFDynamicPageTitle .sapMObjStatus .sapMObjStatusIcon { color: #dbe8f5; }
+.opsPage .sapFDynamicPageTitle .sapMBtn .sapMBtnIcon,
+.opsPage .sapFDynamicPageTitle .sapMBtn .sapMBtnContent { color: #ffffff; }
+.opsPage .sapFDynamicPageTitle .sapMBtnEmphasized {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+.opsPage .sapFDynamicPageTitle .sapMBtnEmphasized .sapMBtnContent,
+.opsPage .sapFDynamicPageTitle .sapMBtnEmphasized .sapMBtnIcon { color: var(--ops-navy); }
+.opsPage .sapFSegmentedItem { background: rgba(255, 255, 255, 0.14); }
+.opsPage .sapFSegmentedItem .sapMBtnContent { color: #ffffff; }
+.opsPage .sapFSegmentedItem.sapMBtnActive,
+.opsPage .sapFSegmentedItem[aria-pressed="true"] { background: #ffffff; }
+.opsPage .sapFSegmentedItem.sapMBtnActive .sapMBtnContent,
+.opsPage .sapFSegmentedItem[aria-pressed="true"] .sapMBtnContent { color: var(--ops-navy); font-weight: 600; }
+.opsPage .sapFDynamicPageTitle .sapMSwtLabel { color: #ffffff; }
+
+/* ---------------------------------------------------------------- KPI tiles */
+.opsKpiBox { padding-top: 0.25rem; }
+.opsKpiBox .sapMGT {
+  margin: 0 0.75rem 0.75rem 0;
+  border-radius: var(--ops-radius);
+  border: 1px solid var(--ops-line);
+  box-shadow: var(--ops-shadow);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.opsKpiBox .sapMGT:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(16, 36, 61, 0.10), 0 14px 28px rgba(16, 36, 61, 0.10);
+}
+.opsKpiBox .sapMGT .sapMGTHdrTxt { color: var(--ops-ink); font-weight: 600; }
+.opsKpiBox .sapMGT .sapMGTSubHdrTxt { color: var(--ops-muted); }
+
+/* ---------------------------------------------------------------- tabs */
+.opsTabs > .sapMITBHead {
+  padding: 0 1rem;
+  background: var(--ops-surface-alt);
+  border-bottom: 1px solid var(--ops-line);
+}
+.opsTabs .sapMITBItem .sapMITBText { font-weight: 600; color: var(--ops-muted); }
+.opsTabs .sapMITBSelected .sapMITBText { color: var(--ops-navy); }
+.opsTabs .sapMITBContent { padding: 1.25rem 1.5rem 2rem; }
+.opsTabs .sapMITBSelected .sapMITBFilterDefault::after {
+  background: var(--ops-idoc);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+
+/* ---------------------------------------------------------------- charts & panels */
+.opsChartPanel.sapMPanel {
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+  overflow: hidden;
+}
+.opsChartPanel .sapMPanelHdr {
+  background: var(--ops-surface);
+  border-bottom: 1px solid var(--ops-line);
+  color: var(--ops-ink);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+}
+.opsChartPanel .sapMPanelContent { padding: 0.5rem 0.75rem 0.75rem; }
+
+.opsPanel.sapMPanel {
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.opsPanel .sapMPanelHdr {
+  background: var(--ops-surface);
+  border-bottom: 1px solid var(--ops-line);
+  color: var(--ops-ink);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+}
+.opsPanel .sapMListTblHeaderCell { background: var(--ops-surface-alt); }
+.opsPanel .sapMListTblHeaderCell .sapMText { color: var(--ops-ink); font-weight: 600; }
+.opsPanel .sapMListTblRow:hover { background: #f2f7fd; }
+
+/* ---------------------------------------------------------------- source labels */
+.opsSourceIdoc { color: var(--ops-idoc); font-weight: 600; }
+.opsSourceJob { color: var(--ops-job); font-weight: 600; }
+
+.opsPill .sapMObjStatusText { font-weight: 600; font-size: 0.75rem; letter-spacing: 0.2px; }
+.opsPillIdoc .sapMObjStatusText { color: var(--ops-idoc); }
+.opsPillJob .sapMObjStatusText { color: var(--ops-job); }
+.opsPillIdoc {
+  background: #e8f1fd;
+  border-radius: 0.75rem;
+  padding: 0.05rem 0.5rem;
+}
+.opsPillJob {
+  background: #efeaff;
+  border-radius: 0.75rem;
+  padding: 0.05rem 0.5rem;
+}
+
+/* ---------------------------------------------------------------- AI Analysis tab */
+.opsAiTab { gap: 0.75rem; }
+.opsAiToolbar {
+  padding: 0.5rem 0.75rem;
+  background: var(--ops-surface);
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+}
+.opsAiCount { color: var(--ops-muted); font-size: 0.8125rem; }
+.opsAiSplit { gap: 1rem; align-items: stretch; }
+.opsAiList {
+  width: 24rem;
+  flex: 0 0 24rem;
+  padding: 0.25rem;
+  background: var(--ops-surface);
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+}
+.opsAiList .sapMListTxt { max-width: 17rem; }
+.opsAiList .sapMLIB { border-radius: 0.5rem; margin-bottom: 0.125rem; border: 0; }
+.opsAiList .sapMLIB:hover { background: #f2f7fd; }
+.opsAiList .sapMLIBSelected,
+.opsAiList .sapMLIB.sapMLIBSelected { background: #e6f0fb; border-left: 3px solid var(--ops-idoc); }
+.opsAiDetail { flex: 1 1 auto; min-width: 0; }
+.opsAiDetail .aiDialogBody {
+  padding: 1.25rem 1.5rem;
+  background: var(--ops-surface);
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+}
+
+/* ---------------------------------------------------------------- Manual Corrections */
+.opsCorrFacts { gap: 0.75rem; padding: 0.25rem 0 0.5rem; }
+.opsCorrError { margin-top: 0.25rem; }
+.opsFieldLabel { color: var(--ops-ink); font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.opsCorrActions { gap: 0.25rem; padding-top: 0.75rem; }
+.opsCorrActions .sapMBtn { border-radius: 0.5rem; }

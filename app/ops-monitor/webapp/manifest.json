@@ -18,7 +18,7 @@
       "libs": { "sap.m": {}, "sap.f": {}, "sap.ui.core": {}, "sap.ui.layout": {}, "sap.fe.core": {}, "sap.viz": {} }
     },
     "contentDensities": { "compact": true, "cozy": true },
-    "resources": { "css": [{ "uri": "css/style.css" }] },
+    "resources": { "css": [{ "uri": "css/style.css" }, { "uri": "css/ai-analysis.css" }] },
     "models": {
       "": { "dataSource": "mainService", "preload": true, "settings": { "operationMode": "Server", "autoExpandSelect": true, "earlyRequests": true } }
     },

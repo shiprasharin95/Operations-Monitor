@@ -15,6 +15,7 @@ applications:
       - operations-monitor-destination
       - operations-monitor-xsuaa
       - operations-monitor-identity
+      - operations-monitor-db
     env:
       NODE_ENV: production
       # Source monitors (destinations with OAuth2UserTokenExchange, created in the BTP cockpit)
@@ -24,6 +25,9 @@ applications:
       IDOC_DASHBOARD_URL: https://bearingpointgmbh-sap-genai-genai-idoc-monitor.cfapps.eu20-001.hana.ondemand.com/idoc-monitor/webapp/index.html
       JOB_DASHBOARD_URL: https://job-failure-monitor.cfapps.eu20-001.hana.ondemand.com/job-monitor/webapp/index.html
       DASHBOARD_URL: https://operations-monitor.cfapps.eu20-001.hana.ondemand.com/ops-monitor/webapp/index.html
+      # AI analysis (SAP AI Core) — same destination the Job Monitor uses
+      AI_DESTINATION: GENERATIVE_AI_HUB
+      AI_DEPLOYMENT_ID: d4da60fb50a82e0d
       # Orchestrator A2A agent (IAS)
       IAS_ISSUER: https://a21ttncfv.accounts.ondemand.com
       IAS_AUDIENCE: cbbf003a-5e27-490d-b45b-e72abbb8a194
