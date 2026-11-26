@@ -250,17 +250,18 @@
             <SearchField width="16rem" liveChange=".onSearch" placeholder="Search object, error, system"/>
           </OverflowToolbar>
           <MessageStrip text="{ui>/unavailableText}" type="Warning" visible="{= !!${ui>/unavailableText}}" class="sapUiTinyMarginBottom"/>
+          <!-- fixedLayout=false: widths are hints, so "Error reason" always keeps room; less important
+               columns move into a pop-in below the row on narrower windows. -->
           <Table id="failureTable" items="{ui>/failuresView}" noDataText="No failures in the selected period" growing="true" growingThreshold="25"
-            sticky="ColumnHeaders" class="opsTable">
+            sticky="ColumnHeaders" fixedLayout="false" popinLayout="GridSmall" class="opsTable opsFailureTable">
             <columns>
-              <Column width="8rem"><Text text="Source"/></Column>
-              <Column width="18rem"><Text text="Object"/></Column>
-              <Column width="7rem" minScreenWidth="Tablet" demandPopin="true"><Text text="Module"/></Column>
-              <Column width="10rem" minScreenWidth="Desktop" demandPopin="true"><Text text="Type"/></Column>
-              <Column><Text text="Error reason"/></Column>
-              <Column width="13rem" minScreenWidth="Desktop" demandPopin="true"><Text text="System"/></Column>
-              <Column width="12rem" minScreenWidth="Desktop" demandPopin="true"><Text text="Partner / Scheduled by"/></Column>
-              <Column width="11rem" hAlign="End"><Text text="Time"/></Column>
+              <Column width="7rem"><Text text="Source"/></Column>
+              <Column width="15rem"><Text text="Object"/></Column>
+              <Column width="5rem" minScreenWidth="Tablet" demandPopin="true"><Text text="Module"/></Column>
+              <Column width="8rem" minScreenWidth="1200px" demandPopin="true"><Text text="Type"/></Column>
+              <Column styleClass="opsErrorCol"><Text text="Error reason" wrapping="false"/></Column>
+              <Column width="14rem" minScreenWidth="1400px" demandPopin="true"><Text text="System / Partner"/></Column>
+              <Column width="9rem" hAlign="End"><Text text="Time"/></Column>
             </columns>
             <items>
               <ColumnListItem type="Navigation" press=".onFailurePress" tooltip="Open details (AI analysis, manual corrections) in the source monitor">
@@ -270,9 +271,11 @@
                   state="{= ${ui>module} === 'UNKNOWN' ? 'None' : 'Information'}"
                   tooltip="{ui>moduleText} · {= ${ui>moduleBy} === 'AI' ? 'classified by AI (' + ${ui>moduleConfidence} + '% confidence)' : (${ui>moduleBy} === 'USER' ? 'set manually' : (${ui>moduleBy} === 'RULE' ? 'rule' : 'not classified yet'))}"/>
                 <Text text="{= ${ui>displayCategory} || ${ui>category} }" tooltip="{= ${ui>displayCategory} !== ${ui>category} ? 'Message type: ' + ${ui>category} : '' }" wrapping="true"/>
-                <Text text="{ui>errorText}" wrapping="true" maxLines="3"/>
-                <Text text="{ui>system}" wrapping="true" class="opsBreakAll"/>
-                <Text text="{ui>partner}" wrapping="true"/>
+                <Text text="{ui>errorText}" wrapping="true" maxLines="3" tooltip="{ui>errorText}"/>
+                <VBox>
+                  <Text text="{ui>system}" wrapping="true" class="opsBreakAll"/>
+                  <Text text="{ui>partner}" wrapping="true" visible="{= !!${ui>partner}}" class="opsCardSubtitle"/>
+                </VBox>
                 <Text text="{ui>timeText}" wrapping="true"/>
               </ColumnListItem>
             </items>

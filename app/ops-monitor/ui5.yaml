@@ -1,0 +1,15 @@
+specVersion: "3.0"
+metadata:
+  name: ops.monitor
+type: application
+builder:
+  resources:
+    excludes:
+      - /test/**
+  customTasks:
+    - name: ui5-task-zipper
+      afterTask: generateCachebusterInfo
+      configuration:
+        archiveName: opsmonitor
+        additionalFiles:
+          - xs-app.json

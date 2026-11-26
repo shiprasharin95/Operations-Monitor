@@ -7,9 +7,22 @@
     "description": "IDoc and application-job failures from SAP Cloud ALM in one dashboard",
     "applicationVersion": { "version": "1.2.0" },
     "dataSources": {
-      "mainService": { "uri": "/odata/v4/ops/", "type": "OData", "settings": { "odataVersion": "4.0" } }
+      "mainService": { "uri": "odata/v4/ops/", "type": "OData", "settings": { "odataVersion": "4.0" } }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "OperationsMonitor-display": {
+          "semanticObject": "OperationsMonitor",
+          "action": "display",
+          "title": "Operations Monitor",
+          "subTitle": "IDoc and job failures",
+          "icon": "sap-icon://monitor-payments",
+          "signature": { "parameters": {}, "additionalParameters": "allowed" }
+        }
+      }
     }
   },
+  "sap.cloud": { "public": true, "service": "ops.monitor.service" },
   "sap.ui": { "technology": "UI5", "fullWidth": true, "deviceTypes": { "desktop": true, "tablet": true, "phone": true } },
   "sap.ui5": {
     "flexEnabled": false,

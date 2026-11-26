@@ -1,0 +1,13 @@
+node_modules/
+app/ops-monitor/node_modules/
+app/ops-monitor/dist/
+mta_archives/
+resources/
+.Operations-Monitor_mta_build_tmp/
+approuter/
+gen/
+test/
+.playwright-cli/
+*.log
+default-env.json
+.env

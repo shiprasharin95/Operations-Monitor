@@ -1,0 +1,79 @@
+_schema-version: "3.2"
+ID: operations-monitor-ui
+description: Operations Monitor dashboard for SAP Build Work Zone
+version: 1.2.0
+modules:
+- name: operations-monitor-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: operations-monitor-wz-destination
+    parameters:
+      content-target: true
+  - name: operations-monitor-html5-host
+    parameters:
+      service-key:
+        name: operations-monitor-html5-host-key
+  - name: operations-monitor-xsuaa
+    parameters:
+      service-key:
+        name: operations-monitor-wz-uaa-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: ops_monitor_html_repo_host
+          ServiceInstanceName: operations-monitor-html5-host
+          ServiceKeyName: operations-monitor-html5-host-key
+          sap.cloud.service: ops.monitor.service
+        - Authentication: OAuth2UserTokenExchange
+          Name: ops_monitor_uaa
+          ServiceInstanceName: operations-monitor-xsuaa
+          ServiceKeyName: operations-monitor-wz-uaa-key
+          sap.cloud.service: ops.monitor.service
+        existing_destinations_policy: update
+- name: operations-monitor-ui-deployer
+  type: com.sap.application.content
+  path: .Operations-Monitor_mta_build_tmp/operations-monitor-ui-deployer/data.zip
+  requires:
+  - name: operations-monitor-html5-host
+    parameters:
+      content-target: true
+resources:
+- name: operations-monitor-wz-destination
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            HTML5.DynamicDestination: true
+            HTML5.ForwardAuthToken: true
+            HTML5.Timeout: 120000
+            Name: ops-monitor-srv-api
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: operations-monitor-wz-destination
+    service-plan: lite
+- name: operations-monitor-html5-host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: operations-monitor-html5-host
+    service-plan: app-host
+- name: operations-monitor-xsuaa
+  type: org.cloudfoundry.existing-service
+  parameters:
+    service-name: operations-monitor-xsuaa
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+  - builder: custom
+    commands:
+    - npm install --prefix app/ops-monitor --no-audit --no-fund

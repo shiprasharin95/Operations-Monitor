@@ -12,4 +12,8 @@ applications:
     services:
       - operations-monitor-xsuaa
     env:
+      # Allow embedding in SAP Build Work Zone (URL tile): no SAMEORIGIN header, and only the
+      # launchpad hosts may frame the app (UI5 FrameOptions asks /whitelist/service).
+      SEND_XFRAMEOPTIONS: "false"
+      CJ_PROTECT_WHITELIST: '[{"protocol":"https","host":"*.launchpad.cfapps.eu20.hana.ondemand.com"},{"protocol":"https","host":"*.cfapps.eu20-001.hana.ondemand.com"}]'
       destinations: '[{"name":"srv-api","url":"https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com","forwardAuthToken":true}]'

@@ -1,0 +1,123 @@
+# SAP Build Work Zone integration of the Operations Monitor dashboard.
+#
+# Deploys only the UI: the dashboard is uploaded to the HTML5 Application Repository and runs
+# through the SAP managed approuter (Work Zone). The CAP backend (operations-monitor-srv), the
+# standalone approuter and the existing services stay as they are (cf push, see manifest.yml).
+#
+#   mbt build
+#   cf deploy mta_archives/operations-monitor-ui_1.2.0.mtar
+#
+# Then in Work Zone: Channel Manager -> HTML5 Apps -> refresh, Content Manager -> Content Explorer
+# -> HTML5 Apps -> add "Operations Monitor", assign to a group, a catalog and a role (Everyone).
+_schema-version: "3.2"
+ID: operations-monitor-ui
+version: 1.2.0
+description: Operations Monitor dashboard for SAP Build Work Zone
+
+parameters:
+  enable-parallel-deployments: true
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install --prefix app/ops-monitor --no-audit --no-fund
+
+modules:
+  # Instance-level destinations read by the managed approuter:
+  #  - html_repo_host: where the app files live
+  #  - uaa: which XSUAA logs the user in (the existing operations-monitor-xsuaa)
+  #  - ops-monitor-srv-api: the CAP backend, called with the user's token (xs-app.json route /odata)
+  - name: operations-monitor-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: operations-monitor-wz-destination
+        parameters:
+          content-target: true
+      - name: operations-monitor-html5-host
+        parameters:
+          service-key:
+            name: operations-monitor-html5-host-key
+      - name: operations-monitor-xsuaa
+        parameters:
+          service-key:
+            name: operations-monitor-wz-uaa-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: ops_monitor_html_repo_host
+              ServiceInstanceName: operations-monitor-html5-host
+              ServiceKeyName: operations-monitor-html5-host-key
+              sap.cloud.service: ops.monitor.service
+            - Name: ops_monitor_uaa
+              Authentication: OAuth2UserTokenExchange
+              ServiceInstanceName: operations-monitor-xsuaa
+              ServiceKeyName: operations-monitor-wz-uaa-key
+              sap.cloud.service: ops.monitor.service
+          existing_destinations_policy: update
+    build-parameters:
+      no-source: true
+
+  # Uploads the zipped UI5 app to the HTML5 Application Repository.
+  - name: operations-monitor-ui-deployer
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: operations-monitor-html5-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: opsmonitor
+          artifacts:
+            - opsmonitor.zip
+          target-path: resources/
+
+  - name: opsmonitor
+    type: html5
+    path: app/ops-monitor
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm run build:cf
+      supported-platforms: []
+
+resources:
+  - name: operations-monitor-wz-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+      service-name: operations-monitor-wz-destination
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+        init_data:
+          instance:
+            existing_destinations_policy: update
+            destinations:
+              # CAP backend, called with the user's token (xs-app.json route /odata)
+              - Name: ops-monitor-srv-api
+                URL: https://operations-monitor-srv.cfapps.eu20-001.hana.ondemand.com
+                Authentication: NoAuthentication
+                ProxyType: Internet
+                Type: HTTP
+                HTML5.DynamicDestination: true
+                HTML5.ForwardAuthToken: true
+                HTML5.Timeout: 120000
+
+  - name: operations-monitor-html5-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      service-name: operations-monitor-html5-host
+
+  # Existing XSUAA of the Operations Monitor (created with xs-security.json, bound to srv + router).
+  - name: operations-monitor-xsuaa
+    type: org.cloudfoundry.existing-service
+    parameters:
+      service-name: operations-monitor-xsuaa

@@ -1,0 +1,16 @@
+{
+  "name": "opsmonitor",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Operations Monitor dashboard packaged for the HTML5 Application Repository / SAP Build Work Zone",
+  "devDependencies": {
+    "@ui5/cli": "^4",
+    "ui5-task-zipper": "^3"
+  },
+  "scripts": {
+    "build:cf": "ui5 build preload --clean-dest --config ui5.yaml --include-task=generateCachebusterInfo"
+  },
+  "dependencies": {
+    "operations-monitor": "file:../.."
+  }
+}
