@@ -5,13 +5,13 @@
 # standalone approuter and the existing services stay as they are (cf push, see manifest.yml).
 #
 #   mbt build
-#   cf deploy mta_archives/operations-monitor-ui_1.2.0.mtar
+#   cf deploy mta_archives/operations-monitor-ui_1.3.0.mtar
 #
 # Then in Work Zone: Channel Manager -> HTML5 Apps -> refresh, Content Manager -> Content Explorer
 # -> HTML5 Apps -> add "Operations Monitor", assign to a group, a catalog and a role (Everyone).
 _schema-version: "3.2"
 ID: operations-monitor-ui
-version: 1.2.0
+version: 1.3.0
 description: Operations Monitor dashboard for SAP Build Work Zone
 
 parameters:

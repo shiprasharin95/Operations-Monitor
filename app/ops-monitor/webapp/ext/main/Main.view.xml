@@ -271,7 +271,7 @@
                   state="{= ${ui>module} === 'UNKNOWN' ? 'None' : 'Information'}"
                   tooltip="{ui>moduleText} · {= ${ui>moduleBy} === 'AI' ? 'classified by AI (' + ${ui>moduleConfidence} + '% confidence)' : (${ui>moduleBy} === 'USER' ? 'set manually' : (${ui>moduleBy} === 'RULE' ? 'rule' : 'not classified yet'))}"/>
                 <Text text="{= ${ui>displayCategory} || ${ui>category} }" tooltip="{= ${ui>displayCategory} !== ${ui>category} ? 'Message type: ' + ${ui>category} : '' }" wrapping="true"/>
-                <Text text="{ui>errorText}" wrapping="true" maxLines="3" tooltip="{ui>errorText}"/>
+                <Text text="{ui>errorText}" wrapping="true" maxLines="3" tooltip="{ui>errorText}" class="opsErrorText"/>
                 <VBox>
                   <Text text="{ui>system}" wrapping="true" class="opsBreakAll"/>
                   <Text text="{ui>partner}" wrapping="true" visible="{= !!${ui>partner}}" class="opsCardSubtitle"/>

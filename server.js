@@ -22,6 +22,8 @@ cds.on('bootstrap', (app) => {
     const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
     res.redirect(`${DASHBOARD_PATH}${query}`);
   });
+  // Dashboard files (views, controllers, CSS): always revalidate, so a redeploy is visible on the next reload.
+  app.use('/ops-monitor/webapp', (req, res, next) => { res.set('Cache-Control', 'no-cache, no-store, must-revalidate'); next(); });
   app.get('/health', (req, res) => res.json({ status: 'UP' }));
   // Orchestrator A2A agent: public agent card + IAS-protected POST /a2a.
   mountA2A(app);

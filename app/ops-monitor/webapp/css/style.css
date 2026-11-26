@@ -107,7 +107,9 @@ html, body { height: 100%; margin: 0; }
 .opsTable .sapMGrowingListTrigger { border-top: 1px solid var(--ops-line); }
 .opsBreakAll.sapMText { word-break: break-all; }
 /* Failures table: the error text column never collapses (headers stay on one line). */
+/* min-width on a table cell is ignored by browsers, so it sits on the text inside the cell. */
 .opsFailureTable .opsErrorCol { min-width: 20rem; }
+.opsFailureTable .opsErrorText.sapMText { min-width: 20rem; display: block; }
 .opsFailureTable .sapMListTblHeaderCell .sapMText { white-space: nowrap; }
 /* ---------------------------------------------------------------- errors by SAP module */
 .opsModuleGrid { gap: 1.25rem; }
