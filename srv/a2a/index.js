@@ -37,6 +37,12 @@ function buildAgentCard() {
       description: 'Combined IDoc and job failure report for the last hour, 24 hours, 7 days or 30 days. Ask about IDocs only, jobs only, or both.',
       tags: ['idoc', 'jobs', 'integration', 'batch', 'Cloud ALM', 'orchestrator'],
       examples: ['How are my integrations and jobs today?', 'How many IDocs failed this week?', 'Which jobs failed in the last hour?']
+    }, {
+      id: 'module_breakdown',
+      name: 'Errors by SAP module',
+      description: 'Failed IDocs and failed jobs grouped by SAP module (SD, MM, PP, QM, PM, FI, CO, TM, EWM, LE, PS, HR, master data, Basis). Message types and jobs are assigned to modules by a rule table and, for unknown ones, by AI. Ask for all modules or a specific one.',
+      tags: ['module', 'SD', 'MM', 'PP', 'QM', 'FI', 'CO', 'TM', 'EWM', 'idoc', 'jobs'],
+      examples: ['Which SAP module has the most errors this week?', 'Show IDoc errors by module', 'How many MM job failures today?', 'Errors per module in the last 30 days']
     }]
   };
   if (issuer) {
@@ -72,7 +78,7 @@ class OrchestratorExecutor {
         this.run(question, caller),
         new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('The monitors did not answer in time.')), TIMEOUT_MS); })
       ]).finally(() => clearTimeout(timer));
-      console.log(JSON.stringify({ event: 'a2a-orchestration-complete', taskId, targets: report.data.targets, totalFailed: report.data.totalFailed, ok: report.ok }));
+      console.log(JSON.stringify({ event: 'a2a-orchestration-complete', taskId, type: report.data.type, targets: report.data.targets, totalFailed: report.data.totalFailed, ok: report.ok }));
       eventBus.publish({ kind: 'artifact-update', taskId, contextId, lastChunk: true, artifact: { artifactId: randomUUID(), name: 'operations_report', parts: [{ kind: 'text', text: report.text }, { kind: 'data', data: report.data }] } });
       eventBus.publish(status(report.ok ? 'completed' : 'failed', report.ok ? null : report.text, true));
     } catch (error) {

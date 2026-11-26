@@ -44,9 +44,47 @@ test('question routing picks the right monitors and period', () => {
   assert.equal(periodFrom('this week'), '7D'); assert.equal(periodFrom('last hour'), '1H'); assert.equal(periodFrom('this month'), '30D'); assert.equal(periodFrom('today'), '24H');
 });
 
+test('module questions are detected and module names resolved', () => {
+  const { isModuleQuestion, modulesFrom } = require('../srv/a2a/orchestrator');
+  assert.equal(isModuleQuestion('Which SAP module has the most errors this week?'), true);
+  assert.equal(isModuleQuestion('How many MM job failures today?'), true);
+  assert.equal(isModuleQuestion('Show IDoc errors by module'), true);
+  assert.equal(isModuleQuestion('How are my integrations and jobs today?'), false);
+  assert.equal(isModuleQuestion('Which jobs failed in the last hour?'), false);
+  assert.deepEqual(modulesFrom('How many MM job failures today?'), ['MM']);
+  assert.deepEqual(modulesFrom('warehouse and FI errors').sort(), ['EWM', 'FI']);
+  assert.deepEqual(modulesFrom('errors by module'), []);
+});
+
+test('module report groups and filters the breakdown', async () => {
+  const aggregate = require('../srv/aggregate');
+  const original = aggregate.moduleBreakdown;
+  aggregate.moduleBreakdown = async (period) => ({
+    period, idocTotal: 5, jobTotal: 4, unavailable: [],
+    modules: [
+      { source: 'idoc', module: 'SD', moduleText: 'Sales & Distribution', error: 3, warning: 0, categoryCount: 1, aiClassified: 0, topCategories: 'ORDERS (3)' },
+      { source: 'idoc', module: 'MM', moduleText: 'Materials Management', error: 2, warning: 0, categoryCount: 1, aiClassified: 0, topCategories: 'MATMAS (2)' },
+      { source: 'job', module: 'MM', moduleText: 'Materials Management', error: 4, warning: 0, categoryCount: 1, aiClassified: 1, topCategories: 'Z_JOB (4)' }
+    ],
+    categories: [{ source: 'job', category: 'Z_JOB', classifiedBy: 'AI' }]
+  });
+  try {
+    const { moduleReport } = require('../srv/a2a/orchestrator');
+    const all = await moduleReport('errors by module', '7D', ['idoc', 'job']);
+    assert.equal(all.data.type, 'module_breakdown'); assert.equal(all.data.totalFailed, 9);
+    assert.match(all.data.markdownTable, /\*\*SD\*\*/);
+    const mm = await moduleReport('MM job failures', '24H', ['job']);
+    assert.equal(mm.data.totalFailed, 4); assert.deepEqual(mm.data.modulesRequested, ['MM']);
+    assert.match(mm.text, /assigned to a module by AI/);
+  } finally {
+    aggregate.moduleBreakdown = original;
+  }
+});
+
 test('agent card is public', async () => {
   const card = await (await fetch(`${agentUrl}/.well-known/agent-card.json`)).json();
   assert.equal(card.protocolVersion, '0.3.0'); assert.equal(card.skills[0].id, 'operations_report'); assert.ok(card.securitySchemes.ias);
+  assert.ok(card.skills.some((s) => s.id === 'module_breakdown'));
 });
 
 test('viewer gets a completed task with text + data', async () => {

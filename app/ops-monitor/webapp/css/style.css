@@ -67,54 +67,63 @@ html, body { height: 100%; margin: 0; }
 .opsKpiBox .sapMGT .sapMGTHdrTxt { color: var(--ops-ink); font-weight: 600; }
 .opsKpiBox .sapMGT .sapMGTSubHdrTxt { color: var(--ops-muted); }
 
-/* ---------------------------------------------------------------- tabs */
-.opsTabs > .sapMITBHead {
-  padding: 0 1rem;
-  background: var(--ops-surface-alt);
-  border-bottom: 1px solid var(--ops-line);
-}
-.opsTabs .sapMITBItem .sapMITBText { font-weight: 600; color: var(--ops-muted); }
-.opsTabs .sapMITBSelected .sapMITBText { color: var(--ops-navy); }
-.opsTabs .sapMITBContent { padding: 1.25rem 1.5rem 2rem; }
-.opsTabs .sapMITBSelected .sapMITBFilterDefault::after {
-  background: var(--ops-idoc);
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-}
+/* ---------------------------------------------------------------- dashboard cards */
+.opsDashboard { padding: 1.25rem 1.5rem 2rem; gap: 1.25rem; }
+.opsChartGrid { gap: 1.25rem; }
+.opsChartGrid > .opsCard { flex: 1 1 32rem; min-width: 0; }
 
-/* ---------------------------------------------------------------- charts & panels */
-.opsChartPanel.sapMPanel {
+.opsCard {
+  background: var(--ops-surface);
   border: 1px solid var(--ops-line);
   border-radius: var(--ops-radius);
   box-shadow: var(--ops-shadow);
-  overflow: hidden;
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
+  height: 100%;
+  overflow: visible;
 }
-.opsChartPanel .sapMPanelHdr {
-  background: var(--ops-surface);
+.opsCardHeader {
+  padding: 0.9rem 0 0.75rem;
+  margin-bottom: 0.5rem;
   border-bottom: 1px solid var(--ops-line);
-  color: var(--ops-ink);
-  font-weight: 600;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
 }
-.opsChartPanel .sapMPanelContent { padding: 0.5rem 0.75rem 0.75rem; }
+.opsCardToolbar.sapMTB {
+  height: auto;
+  min-height: 3rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ops-line);
+  background: transparent;
+}
+.opsCardTitle.sapMTitle { font-size: 1rem; font-weight: 700; color: var(--ops-ink); line-height: 1.4; overflow: visible; }
+.opsCardSubtitle.sapMText { color: var(--ops-muted); font-size: 0.8125rem; line-height: 1.4; margin-top: 0.125rem; }
 
-.opsPanel.sapMPanel {
+/* Tables inside cards */
+.opsTable .sapMListTblHeaderCell { background: var(--ops-surface-alt); }
+.opsTable .sapMListTblHeaderCell .sapMText { color: var(--ops-ink); font-weight: 600; }
+.opsTable .sapMListTblCell { vertical-align: top; padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.opsTable .sapMListTblRow:hover { background: #f2f7fd; }
+.opsTable .sapMGrowingListTrigger { border-top: 1px solid var(--ops-line); }
+.opsBreakAll.sapMText { word-break: break-all; }
+/* ---------------------------------------------------------------- errors by SAP module */
+.opsModuleGrid { gap: 1.25rem; }
+.opsModuleGrid > .opsModulePane { flex: 1 1 30rem; min-width: 0; }
+.opsModulePane {
   border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
-  box-shadow: var(--ops-shadow);
-  overflow: hidden;
-  margin-bottom: 1.25rem;
-}
-.opsPanel .sapMPanelHdr {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem 0.25rem;
   background: var(--ops-surface);
-  border-bottom: 1px solid var(--ops-line);
-  color: var(--ops-ink);
-  font-weight: 600;
-  padding: 0.75rem 1rem;
 }
-.opsPanel .sapMListTblHeaderCell { background: var(--ops-surface-alt); }
-.opsPanel .sapMListTblHeaderCell .sapMText { color: var(--ops-ink); font-weight: 600; }
-.opsPanel .sapMListTblRow:hover { background: #f2f7fd; }
+.opsModulePaneHeader { padding: 0.25rem 0 0.5rem; }
+.opsModuleActions { gap: 0.25rem; }
+.opsModuleList.sapMList .sapMLIB { padding: 0.35rem 0.25rem; }
+.opsModuleRow { width: 100%; gap: 0.5rem; }
+.opsModuleRowText { flex: 1 1 auto; min-width: 0; }
+.opsModuleCode.sapMText { font-weight: 700; color: var(--ops-ink); min-width: 3.25rem; }
+.opsModuleName.sapMText { color: var(--ops-ink); font-size: 0.8125rem; }
+.opsAiIcon { color: var(--ops-idoc); }
+.opsEmpty.sapMText { color: var(--ops-muted); padding: 1.5rem 0; text-align: center; width: 100%; }
 
 /* ---------------------------------------------------------------- source labels */
 .opsSourceIdoc { color: var(--ops-idoc); font-weight: 600; }
@@ -134,43 +143,3 @@ html, body { height: 100%; margin: 0; }
   padding: 0.05rem 0.5rem;
 }
 
-/* ---------------------------------------------------------------- AI Analysis tab */
-.opsAiTab { gap: 0.75rem; }
-.opsAiToolbar {
-  padding: 0.5rem 0.75rem;
-  background: var(--ops-surface);
-  border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
-  box-shadow: var(--ops-shadow);
-}
-.opsAiCount { color: var(--ops-muted); font-size: 0.8125rem; }
-.opsAiSplit { gap: 1rem; align-items: stretch; }
-.opsAiList {
-  width: 24rem;
-  flex: 0 0 24rem;
-  padding: 0.25rem;
-  background: var(--ops-surface);
-  border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
-  box-shadow: var(--ops-shadow);
-}
-.opsAiList .sapMListTxt { max-width: 17rem; }
-.opsAiList .sapMLIB { border-radius: 0.5rem; margin-bottom: 0.125rem; border: 0; }
-.opsAiList .sapMLIB:hover { background: #f2f7fd; }
-.opsAiList .sapMLIBSelected,
-.opsAiList .sapMLIB.sapMLIBSelected { background: #e6f0fb; border-left: 3px solid var(--ops-idoc); }
-.opsAiDetail { flex: 1 1 auto; min-width: 0; }
-.opsAiDetail .aiDialogBody {
-  padding: 1.25rem 1.5rem;
-  background: var(--ops-surface);
-  border: 1px solid var(--ops-line);
-  border-radius: var(--ops-radius);
-  box-shadow: var(--ops-shadow);
-}
-
-/* ---------------------------------------------------------------- Manual Corrections */
-.opsCorrFacts { gap: 0.75rem; padding: 0.25rem 0 0.5rem; }
-.opsCorrError { margin-top: 0.25rem; }
-.opsFieldLabel { color: var(--ops-ink); font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.opsCorrActions { gap: 0.25rem; padding-top: 0.75rem; }
-.opsCorrActions .sapMBtn { border-radius: 0.5rem; }

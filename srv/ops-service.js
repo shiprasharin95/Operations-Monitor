@@ -1,6 +1,7 @@
 const aggregate = require('./aggregate');
 const ai = require('./ai');
 const corrections = require('./corrections');
+const classifier = require('./module-classifier');
 
 function fail(request, error) {
   return request.error(error.statusCode || 502, error.message);
@@ -48,7 +49,17 @@ module.exports = (service) => {
   service.on('getTrend', (request) => aggregate.trend(request.data.period).catch((e) => fail(request, e)));
   service.on('getCategories', (request) => aggregate.categories(request.data.period).catch((e) => fail(request, e)));
   service.on('getTopErrors', (request) => aggregate.topErrors(request.data.period).catch((e) => fail(request, e)));
-  service.on('getFailures', (request) => aggregate.failures(request.data.period, request.data.top).catch((e) => fail(request, e)));
+  service.on('getFailures', (request) => aggregate.failuresWithModules(request.data.period, request.data.top).catch((e) => fail(request, e)));
+  service.on('getModuleBreakdown', (request) => aggregate.moduleBreakdown(request.data.period, { actor: request.user?.id }).catch((e) => fail(request, e)));
+  service.on('getModules', () => Object.entries(classifier.MODULES).map(([code, text]) => ({ code, text })));
+  service.on('setModuleClassification', async (request) => {
+    try {
+      const { source, category, module } = request.data;
+      const c = await classifier.setOverride(request, { source, category, module });
+      return { source: String(source).toLowerCase(), category, module: c.module, moduleText: c.moduleText, classifiedBy: c.classifiedBy, confidence: c.confidence, reason: c.reason };
+    } catch (e) { return fail(request, e); }
+  });
+  service.on('reclassifyModules', (request) => classifier.resetAi().catch((e) => fail(request, e)));
   service.on('syncAll', (request) => aggregate.syncAll().catch((e) => fail(request, e)));
   service.on('analyzeFailure', (request) => analyzeFailure(request.data).catch((e) => fail(request, e)));
   service.on('getManualCorrection', (request) => getManualCorrection(request.data).catch((e) => fail(request, e)));

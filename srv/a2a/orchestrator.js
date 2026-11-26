@@ -6,6 +6,8 @@ const { randomUUID } = require('node:crypto');
 const { getDestination } = require('@sap-cloud-sdk/connectivity');
 const { executeHttpRequest } = require('@sap-cloud-sdk/http-client');
 const { SOURCES, api } = require('../backends');
+const aggregate = require('../aggregate');
+const { MODULES } = require('../module-classifier');
 
 const PERIOD_TEXT = { '1H': 'last hour', '24H': 'last 24 hours', '7D': 'last 7 days', '30D': 'last 30 days' };
 const AGENT_TIMEOUT_MS = Number(process.env.A2A_SUBAGENT_TIMEOUT_MS || 20000);
@@ -87,10 +89,83 @@ async function askIdocMonitor(period) {
   };
 }
 
+// ---------------------------------------------------------------- errors per SAP module
+const MODULE_CODES = Object.keys(MODULES).filter((code) => code !== 'UNKNOWN');
+const MODULE_NAMES = {
+  sales: 'SD', distribution: 'SD', billing: 'SD', purchasing: 'MM', procurement: 'MM', materials: 'MM', inventory: 'MM',
+  production: 'PP', manufacturing: 'PP', quality: 'QM', maintenance: 'PM', finance: 'FI', financial: 'FI', accounting: 'FI',
+  controlling: 'CO', transportation: 'TM', warehouse: 'EWM', logistics: 'LE', delivery: 'LE', project: 'PS', 'master data': 'CROSS', basis: 'BASIS'
+};
+
+/** Module codes named in the question (SD, MM, "warehouse", ...); [] when none. */
+function modulesFrom(question) {
+  const raw = String(question || '');
+  const found = new Set();
+  for (const code of MODULE_CODES) if (new RegExp(`\\b${code}\\b`).test(raw)) found.add(code);
+  const lower = raw.toLowerCase();
+  for (const [word, code] of Object.entries(MODULE_NAMES)) if (new RegExp(`\\b${word}\\b`).test(lower)) found.add(code);
+  return [...found];
+}
+
+/** True when the question asks for errors per SAP module / application area. */
+function isModuleQuestion(question) {
+  const lower = String(question || '').toLowerCase();
+  if (/\bmodules?\b|\bapplication areas?\b|\bper area\b|\bby area\b|\bbusiness areas?\b|\bfunctional areas?\b/.test(lower)) return true;
+  return new RegExp(`\\b(${MODULE_CODES.join('|')})\\b`).test(String(question || ''));
+}
+
+async function moduleReport(question, period, targets) {
+  const breakdown = await aggregate.moduleBreakdown(period);
+  // A2A callers carry an IAS token; when no monitor answers for this route, use the regular report.
+  if (targets.every((t) => breakdown.unavailable.some((u) => u.source === t))) {
+    throw new Error(`Monitors unavailable for module breakdown: ${breakdown.unavailable.map((u) => u.message).join('; ').slice(0, 200)}`);
+  }
+  const wanted = modulesFrom(question);
+  const rows = breakdown.modules.filter((m) => targets.includes(m.source) && (!wanted.length || wanted.includes(m.module)));
+  const total = rows.reduce((sum, m) => sum + m.error, 0);
+  const scope = wanted.length ? ` in ${wanted.join(', ')}` : '';
+  const lines = [`**${total} failure(s)${scope}** in the ${PERIOD_TEXT[period]}, by SAP module`];
+  for (const target of targets) {
+    const list = rows.filter((m) => m.source === target);
+    const label = target === 'idoc' ? 'IDocs' : 'Jobs';
+    lines.push(list.length
+      ? `- **${label}:** ${list.map((m) => `${m.module} ${m.error}`).join(' · ')}`
+      : `- **${label}:** no failures${scope}`);
+  }
+  const ai = breakdown.categories.filter((c) => targets.includes(c.source) && c.classifiedBy === 'AI').length;
+  if (ai) lines.push(`- ${ai} message type(s)/job(s) were assigned to a module by AI; review them in the dashboard's Module mapping.`);
+  for (const u of breakdown.unavailable.filter((x) => targets.includes(x.source))) lines.push(`- _${SOURCES[u.source].label} unavailable: ${String(u.message).slice(0, 150)}_`);
+  const table = rows.length ? [
+    '| Source | Module | Errors | Main message types / jobs |', '|---|---|---|---|',
+    ...rows.map((m) => `| ${m.source === 'idoc' ? 'IDoc' : 'Job'} | **${m.module}** – ${m.moduleText} | ${m.error} | ${String(m.topCategories || '').replace(/\|/g, '/')} |`)
+  ].join('\n') : '';
+  return {
+    ok: true,
+    text: lines.join('\n'),
+    data: {
+      type: 'module_breakdown', period, targets, modulesRequested: wanted, totalFailed: total,
+      modules: rows.map(({ source, module, moduleText, error, warning, categoryCount, aiClassified, topCategories }) => ({ source, module, moduleText, error, warning, categoryCount, aiClassified, topCategories })),
+      hasFailures: total > 0, markdownTable: table
+    }
+  };
+}
+
 // ---------------------------------------------------------------- merge
 async function orchestrate(question, caller) {
   const period = periodFrom(question);
   const targets = targetsFrom(question);
+  if (isModuleQuestion(question)) {
+    try {
+      const report = await withTimeout(moduleReport(question, period, targets), AGENT_TIMEOUT_MS * 2, 'Module breakdown');
+      const link = dashboardUrl(period);
+      if (link) report.text += `\n\n[Open the Operations Monitor for the ${PERIOD_TEXT[period]}](${link})`;
+      report.data.dashboardUrl = link;
+      return report;
+    } catch (error) {
+      console.warn(JSON.stringify({ event: 'a2a-module-report-failed', error: String(error.message).slice(0, 200) }));
+      // Fall through to the regular operations report.
+    }
+  }
   const results = {};
   await Promise.all(targets.map(async (target) => {
     try {
@@ -133,4 +208,4 @@ async function orchestrate(question, caller) {
   };
 }
 
-module.exports = { orchestrate, periodFrom, targetsFrom };
+module.exports = { orchestrate, periodFrom, targetsFrom, modulesFrom, isModuleQuestion, moduleReport };

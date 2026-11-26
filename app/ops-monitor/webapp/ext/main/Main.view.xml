@@ -1,7 +1,6 @@
 <mvc:View
-  xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.f" xmlns:l="sap.ui.layout"
+  xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.f"
   xmlns:viz="sap.viz.ui5.controls" xmlns:vizData="sap.viz.ui5.data" xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds"
-  xmlns:ai="ops.monitor.ext.ai"
   controllerName="ops.monitor.ext.main.Main">
 
   <f:DynamicPage id="page" headerExpanded="true" showFooter="false" fitContent="false" class="opsPage">
@@ -63,14 +62,111 @@
       </f:DynamicPageHeader>
     </f:header>
 
+    <!-- Landing page = dashboard only. AI analysis and manual corrections live on the detail page
+         of each failure (IDoc object page / Job run object page), opened from the failures table. -->
     <f:content>
-      <IconTabBar id="mainTabs" selectedKey="{ui>/tab}" select=".onTabSelect" headerMode="Inline" class="opsTabs">
-        <items>
-          <IconTabFilter key="dashboard" text="Dashboard">
-      <VBox>
-        <l:Grid defaultSpan="XL6 L6 M12 S12" vSpacing="0" hSpacing="1" class="sapUiSmallMarginBottom">
-          <Panel headerText="Failures over time (by source)" class="sapUiNoContentPadding opsChartPanel">
-            <viz:VizFrame id="trendChart" vizType="stacked_column" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%">
+      <VBox class="opsDashboard">
+        <!-- Errors per SAP module: the module classifier agent (rules + AI) assigns every IDoc message type
+             and job to a module; click a pie slice to filter the failure list. -->
+        <VBox class="opsCard" busy="{ui>/modulesLoading}" busyIndicatorDelay="300">
+          <HBox class="opsCardHeader" alignItems="Center" justifyContent="SpaceBetween" wrap="Wrap">
+            <VBox>
+              <Title text="Errors by SAP module" level="H4" wrapping="true" class="opsCardTitle"/>
+              <Text text="Message types and jobs assigned to SD, MM, PP, QM, FI, CO, TM, EWM … by rules and AI · {ui>/periodText} · click a slice to filter the failures" class="opsCardSubtitle" wrapping="true"/>
+            </VBox>
+            <HBox alignItems="Center" class="opsModuleActions">
+              <ObjectStatus text="{ui>/moduleAiCount} AI-classified" icon="sap-icon://ai" state="Information" visible="{= ${ui>/moduleAiCount} > 0}"
+                tooltip="Categories assigned by the AI. Open 'Module mapping' to review or override." class="sapUiSmallMarginEnd"/>
+              <Button text="Clear module filter" icon="sap-icon://clear-filter" type="Transparent" press=".onClearModuleFilter" visible="{= !!${ui>/moduleFilter}}"/>
+              <Button text="Module mapping" icon="sap-icon://table-view" type="Transparent" press=".onOpenModuleMapping"/>
+            </HBox>
+          </HBox>
+          <MessageStrip text="{ui>/moduleUnavailableText}" type="Warning" visible="{= !!${ui>/moduleUnavailableText}}" class="sapUiTinyMarginBottom"/>
+          <FlexBox wrap="Wrap" alignItems="Stretch" class="opsModuleGrid">
+            <VBox class="opsModulePane">
+              <HBox alignItems="Center" justifyContent="SpaceBetween" class="opsModulePaneHeader">
+                <ObjectStatus text="IDoc errors by module" state="None" class="opsPill opsPillIdoc"/>
+                <ObjectStatus text="{ui>/moduleBreakdown/idocTotal}" state="Error" inverted="true"/>
+              </HBox>
+              <viz:VizFrame id="idocModuleChart" vizType="pie" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%"
+                selectData=".onModuleSelect" visible="{= ${ui>/idocModules}.length > 0}">
+                <viz:customData><core:CustomData key="source" value="idoc"/></viz:customData>
+                <viz:dataset>
+                  <vizData:FlattenedDataset data="{ui>/idocModules}">
+                    <vizData:dimensions><vizData:DimensionDefinition name="Module" value="{ui>label}"/></vizData:dimensions>
+                    <vizData:measures><vizData:MeasureDefinition name="Errors" value="{ui>error}"/></vizData:measures>
+                  </vizData:FlattenedDataset>
+                </viz:dataset>
+                <viz:feeds>
+                  <vizFeeds:FeedItem uid="size" type="Measure" values="Errors"/>
+                  <vizFeeds:FeedItem uid="color" type="Dimension" values="Module"/>
+                </viz:feeds>
+              </viz:VizFrame>
+              <Text text="No IDoc errors in the selected period" visible="{= ${ui>/idocModules}.length === 0}" class="opsEmpty"/>
+              <List items="{ui>/idocModules}" showSeparators="Inner" class="opsModuleList" visible="{= ${ui>/idocModules}.length > 0}">
+                <CustomListItem type="Active" press=".onModuleItemPress">
+                  <HBox alignItems="Center" class="opsModuleRow">
+                    <core:Icon src="sap-icon://color-fill" color="{ui>color}" size="0.75rem" class="sapUiTinyMarginEnd"/>
+                    <Text text="{ui>module}" class="opsModuleCode"/>
+                    <VBox class="opsModuleRowText">
+                      <Text text="{ui>moduleText}" class="opsModuleName"/>
+                      <Text text="{ui>topCategories}" class="opsCardSubtitle" maxLines="1" tooltip="{ui>topCategories}"/>
+                    </VBox>
+                    <core:Icon src="sap-icon://ai" visible="{= ${ui>aiClassified} > 0}" tooltip="{ui>aiClassified} categor(ies) classified by AI" class="sapUiTinyMarginEnd opsAiIcon"/>
+                    <ObjectStatus text="{ui>error}" state="Error"/>
+                  </HBox>
+                </CustomListItem>
+              </List>
+            </VBox>
+
+            <VBox class="opsModulePane">
+              <HBox alignItems="Center" justifyContent="SpaceBetween" class="opsModulePaneHeader">
+                <ObjectStatus text="Job failures by module" state="None" class="opsPill opsPillJob"/>
+                <ObjectStatus text="{ui>/moduleBreakdown/jobTotal}" state="Error" inverted="true"/>
+              </HBox>
+              <viz:VizFrame id="jobModuleChart" vizType="pie" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%"
+                selectData=".onModuleSelect" visible="{= ${ui>/jobModules}.length > 0}">
+                <viz:customData><core:CustomData key="source" value="job"/></viz:customData>
+                <viz:dataset>
+                  <vizData:FlattenedDataset data="{ui>/jobModules}">
+                    <vizData:dimensions><vizData:DimensionDefinition name="Module" value="{ui>label}"/></vizData:dimensions>
+                    <vizData:measures><vizData:MeasureDefinition name="Errors" value="{ui>error}"/></vizData:measures>
+                  </vizData:FlattenedDataset>
+                </viz:dataset>
+                <viz:feeds>
+                  <vizFeeds:FeedItem uid="size" type="Measure" values="Errors"/>
+                  <vizFeeds:FeedItem uid="color" type="Dimension" values="Module"/>
+                </viz:feeds>
+              </viz:VizFrame>
+              <Text text="No job failures in the selected period" visible="{= ${ui>/jobModules}.length === 0}" class="opsEmpty"/>
+              <List items="{ui>/jobModules}" showSeparators="Inner" class="opsModuleList" visible="{= ${ui>/jobModules}.length > 0}">
+                <CustomListItem type="Active" press=".onModuleItemPress">
+                  <HBox alignItems="Center" class="opsModuleRow">
+                    <core:Icon src="sap-icon://color-fill" color="{ui>color}" size="0.75rem" class="sapUiTinyMarginEnd"/>
+                    <Text text="{ui>module}" class="opsModuleCode"/>
+                    <VBox class="opsModuleRowText">
+                      <Text text="{ui>moduleText}" class="opsModuleName"/>
+                      <Text text="{ui>topCategories}" class="opsCardSubtitle" maxLines="1" tooltip="{ui>topCategories}"/>
+                    </VBox>
+                    <core:Icon src="sap-icon://ai" visible="{= ${ui>aiClassified} > 0}" tooltip="{ui>aiClassified} categor(ies) classified by AI" class="sapUiTinyMarginEnd opsAiIcon"/>
+                    <ObjectStatus text="{ui>error}" state="Error"/>
+                  </HBox>
+                </CustomListItem>
+              </List>
+            </VBox>
+          </FlexBox>
+        </VBox>
+
+        <FlexBox wrap="Wrap" alignItems="Stretch" class="opsChartGrid">
+          <VBox class="opsCard">
+            <HBox class="opsCardHeader" alignItems="Center" justifyContent="SpaceBetween">
+              <VBox>
+                <Title text="Failures over time" level="H4" wrapping="true" class="opsCardTitle"/>
+                <Text text="IDoc errors and job failures · {ui>/periodText}" class="opsCardSubtitle"/>
+              </VBox>
+              <ObjectStatus text="{ui>/overview/error}" state="Error" inverted="true" icon="sap-icon://error" tooltip="Total failures"/>
+            </HBox>
+            <viz:VizFrame id="trendChart" vizType="stacked_column" uiConfig="{applicationSet:'fiori'}" height="320px" width="100%">
               <viz:dataset>
                 <vizData:FlattenedDataset data="{ui>/trend}">
                   <vizData:dimensions><vizData:DimensionDefinition name="Time" value="{ui>label}"/></vizData:dimensions>
@@ -85,9 +181,16 @@
                 <vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Time"/>
               </viz:feeds>
             </viz:VizFrame>
-          </Panel>
-          <Panel headerText="By message type / job (top 15, failures first)" class="sapUiNoContentPadding opsChartPanel">
-            <viz:VizFrame id="categoryChart" vizType="stacked_bar" uiConfig="{applicationSet:'fiori'}" height="300px" width="100%">
+          </VBox>
+
+          <VBox class="opsCard">
+            <HBox class="opsCardHeader" alignItems="Center" justifyContent="SpaceBetween">
+              <VBox>
+                <Title text="By message type / job" level="H4" wrapping="true" class="opsCardTitle"/>
+                <Text text="Top 15, failures first · hover a bar for the full name" class="opsCardSubtitle"/>
+              </VBox>
+            </HBox>
+            <viz:VizFrame id="categoryChart" vizType="stacked_bar" uiConfig="{applicationSet:'fiori'}" height="320px" width="100%">
               <viz:dataset>
                 <vizData:FlattenedDataset data="{ui>/categories}">
                   <vizData:dimensions><vizData:DimensionDefinition name="Category" value="{ui>label}"/></vizData:dimensions>
@@ -103,170 +206,79 @@
                 <vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Category"/>
               </viz:feeds>
             </viz:VizFrame>
-          </Panel>
-        </l:Grid>
+          </VBox>
+        </FlexBox>
 
-        <Panel headerText="Top errors (both monitors)" expandable="true" expanded="true" class="opsPanel">
-          <Table items="{ui>/topErrors}" noDataText="No failures in the selected period" growing="true" growingThreshold="5">
+
+        <VBox class="opsCard">
+          <HBox class="opsCardHeader" alignItems="Center" justifyContent="SpaceBetween">
+            <VBox>
+              <Title text="Top errors" level="H4" wrapping="true" class="opsCardTitle"/>
+              <Text text="Most frequent error reasons across both monitors · {ui>/periodText}" class="opsCardSubtitle"/>
+            </VBox>
+            <Text text="{= ${ui>/topErrors}.length } distinct errors" class="opsCardSubtitle"/>
+          </HBox>
+          <Table items="{ui>/topErrors}" noDataText="No failures in the selected period" growing="true" growingThreshold="5"
+            growingTriggerText="Show more errors" class="opsTable">
             <columns>
-              <Column width="9rem"><Text text="Source"/></Column>
-              <Column width="20rem"><Text text="Message type / Job"/></Column>
+              <Column width="8rem"><Text text="Source"/></Column>
+              <Column width="30%" minScreenWidth="Tablet" demandPopin="true"><Text text="Message type / Job"/></Column>
               <Column><Text text="Error"/></Column>
               <Column width="6rem" hAlign="End"><Text text="Count"/></Column>
             </columns>
             <items>
               <ColumnListItem>
-                <Text text="{ui>sourceLabel}" class="{= ${ui>source} === 'idoc' ? 'opsSourceIdoc' : 'opsSourceJob'}"/>
-                <Text text="{ui>category}" wrapping="true"/>
-                <Text text="{ui>errorText}" wrapping="true"/>
-                <ObjectNumber number="{ui>count}" state="Error"/>
+                <ObjectStatus text="{ui>sourceLabel}" state="None" class="{= ${ui>source} === 'idoc' ? 'opsPill opsPillIdoc' : 'opsPill opsPillJob'}"/>
+                <Text text="{= ${ui>displayCategory} || ${ui>category} }" tooltip="{= ${ui>displayCategory} !== ${ui>category} ? 'Message type: ' + ${ui>category} : '' }" wrapping="true"/>
+                <Text text="{ui>errorText}" wrapping="true" maxLines="2" tooltip="{ui>errorText}"/>
+                <ObjectStatus text="{ui>count}" state="Error" inverted="true"/>
               </ColumnListItem>
             </items>
           </Table>
-        </Panel>
+        </VBox>
 
-        <Panel headerText="Failures ({ui>/failureCount})" class="opsPanel">
-          <headerToolbar>
-            <OverflowToolbar>
-              <Title text="Failures ({ui>/failureCount})"/>
-              <ToolbarSpacer/>
-              <SegmentedButton selectedKey="{ui>/sourceFilter}" selectionChange=".onSourceFilter">
-                <items>
-                  <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
-                </items>
-              </SegmentedButton>
-              <SearchField width="16rem" liveChange=".onSearch" placeholder="Search object, error, system"/>
-            </OverflowToolbar>
-          </headerToolbar>
+        <VBox class="opsCard">
+          <OverflowToolbar class="opsCardToolbar">
+            <Title text="Failures ({ui>/failureCount})" level="H4" class="opsCardTitle"/>
+            <Token text="Module: {ui>/moduleFilterText}" visible="{= !!${ui>/moduleFilter}}" delete=".onClearModuleFilter"/>
+            <ToolbarSpacer/>
+            <SegmentedButton selectedKey="{ui>/sourceFilter}" selectionChange=".onSourceFilter">
+              <items>
+                <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
+              </items>
+            </SegmentedButton>
+            <SearchField width="16rem" liveChange=".onSearch" placeholder="Search object, error, system"/>
+          </OverflowToolbar>
           <MessageStrip text="{ui>/unavailableText}" type="Warning" visible="{= !!${ui>/unavailableText}}" class="sapUiTinyMarginBottom"/>
-          <Table id="failureTable" items="{ui>/failuresView}" noDataText="No failures in the selected period" growing="true" growingThreshold="25" sticky="ColumnHeaders">
+          <Table id="failureTable" items="{ui>/failuresView}" noDataText="No failures in the selected period" growing="true" growingThreshold="25"
+            sticky="ColumnHeaders" class="opsTable">
             <columns>
               <Column width="8rem"><Text text="Source"/></Column>
               <Column width="18rem"><Text text="Object"/></Column>
-              <Column width="11rem"><Text text="Type"/></Column>
+              <Column width="7rem" minScreenWidth="Tablet" demandPopin="true"><Text text="Module"/></Column>
+              <Column width="10rem" minScreenWidth="Desktop" demandPopin="true"><Text text="Type"/></Column>
               <Column><Text text="Error reason"/></Column>
-              <Column width="12rem"><Text text="System"/></Column>
-              <Column width="12rem"><Text text="Partner / Scheduled by"/></Column>
+              <Column width="13rem" minScreenWidth="Desktop" demandPopin="true"><Text text="System"/></Column>
+              <Column width="12rem" minScreenWidth="Desktop" demandPopin="true"><Text text="Partner / Scheduled by"/></Column>
               <Column width="11rem" hAlign="End"><Text text="Time"/></Column>
-              <Column width="7rem" hAlign="Center"><Text text="AI Analysis"/></Column>
             </columns>
             <items>
-              <ColumnListItem type="Navigation" press=".onFailurePress">
+              <ColumnListItem type="Navigation" press=".onFailurePress" tooltip="Open details (AI analysis, manual corrections) in the source monitor">
                 <ObjectStatus text="{ui>sourceLabel}" state="None" class="{= ${ui>source} === 'idoc' ? 'opsPill opsPillIdoc' : 'opsPill opsPillJob'}" tooltip="{ui>sourceLabel}"/>
                 <Text text="{ui>objectId}" wrapping="true"/>
-                <Text text="{ui>category}" wrapping="true"/>
+                <ObjectStatus text="{ui>module}" icon="{= ${ui>moduleBy} === 'AI' ? 'sap-icon://ai' : (${ui>moduleBy} === 'USER' ? 'sap-icon://person-placeholder' : '')}"
+                  state="{= ${ui>module} === 'UNKNOWN' ? 'None' : 'Information'}"
+                  tooltip="{ui>moduleText} · {= ${ui>moduleBy} === 'AI' ? 'classified by AI (' + ${ui>moduleConfidence} + '% confidence)' : (${ui>moduleBy} === 'USER' ? 'set manually' : (${ui>moduleBy} === 'RULE' ? 'rule' : 'not classified yet'))}"/>
+                <Text text="{= ${ui>displayCategory} || ${ui>category} }" tooltip="{= ${ui>displayCategory} !== ${ui>category} ? 'Message type: ' + ${ui>category} : '' }" wrapping="true"/>
                 <Text text="{ui>errorText}" wrapping="true" maxLines="3"/>
-                <Text text="{ui>system}" wrapping="true"/>
+                <Text text="{ui>system}" wrapping="true" class="opsBreakAll"/>
                 <Text text="{ui>partner}" wrapping="true"/>
-                <Text text="{ui>timeText}"/>
-                <Button text="Analyze" type="Transparent" press=".onAnalyzeFailure" tooltip="AI root-cause analysis for this failure"/>
+                <Text text="{ui>timeText}" wrapping="true"/>
               </ColumnListItem>
             </items>
           </Table>
-        </Panel>
+        </VBox>
       </VBox>
-          </IconTabFilter>
-
-          <IconTabFilter key="ai" text="AI Analysis">
-            <VBox class="opsAiTab">
-              <Toolbar class="opsAiToolbar">
-                <SegmentedButton selectedKey="{ui>/aiSourceFilter}" selectionChange=".onAiSourceFilter">
-                  <items>
-                    <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
-                  </items>
-                </SegmentedButton>
-                <SearchField width="18rem" class="sapUiSmallMarginBegin" liveChange=".onAiSearch" placeholder="Search object, error, system"/>
-                <ToolbarSpacer/>
-                <Text text="{ui>/aiListCount} failures" class="opsAiCount"/>
-              </Toolbar>
-              <HBox class="opsAiSplit" wrap="NoWrap">
-                <VBox class="opsAiList">
-                  <List id="aiList" items="{ui>/aiList}" mode="SingleSelectMaster" selectionChange=".onAiSelect"
-                    noDataText="No failures in the selected period" includeItemInSelection="true"
-                    showSeparators="Inner" growing="true" growingThreshold="50" busy="{ui>/loading}">
-                    <StandardListItem title="{ui>objectId}" description="{ui>category}" info="{ui>sourceLabel}"
-                      infoState="{= ${ui>source} === 'idoc' ? 'Information' : 'None'}" wrapping="true"/>
-                  </List>
-                </VBox>
-                <VBox class="opsAiDetail" busy="{ui>/ai/busy}" busyIndicatorDelay="0">
-                  <MessageStrip text="Select a failure on the left to see its AI analysis." type="Information" showIcon="true"
-                    visible="{= !${ui>/ai/objectId}}" class="aiDisclaimer"/>
-                  <VBox visible="{= !!${ui>/ai/objectId}}" class="aiDialogBody">
-                    <HBox class="aiDialogHeader" wrap="NoWrap" alignItems="Center">
-                      <ObjectStatus text="{ui>/ai/sourceLabel}" state="None" class="{= ${ui>/ai/source} === 'idoc' ? 'opsPill opsPillIdoc' : 'opsPill opsPillJob'}"/>
-                      <Text text="{ui>/ai/category}" class="aiDialogSubtitle sapUiSmallMarginBegin"/>
-                    </HBox>
-                    <Text text="{ui>/ai/objectId}" class="aiDialogObject"/>
-                    <MessageStrip text="{ui>/ai/message}" type="{ui>/ai/messageType}" visible="{= !!${ui>/ai/message}}" class="sapUiTinyMarginTop sapUiSmallMarginBottom"/>
-                    <ai:AiAnalysis id="aiAnalysis"
-                      analysis="{ui>/ai/analysis}"
-                      analyzedAt="{ui>/ai/analyzedAt}"
-                      disclaimer="{ui>/ai/disclaimer}"
-                      manualCorrections="{ui>/ai/manualCorrections}"
-                      busy="{ui>/ai/busy}"
-                      showGenerate="true"
-                      generate=".onGenerateAnalysis"/>
-                  </VBox>
-                </VBox>
-              </HBox>
-            </VBox>
-          </IconTabFilter>
-
-          <IconTabFilter key="corrections" text="Manual Corrections">
-            <VBox class="opsAiTab">
-              <Toolbar class="opsAiToolbar">
-                <SegmentedButton selectedKey="{ui>/corrSourceFilter}" selectionChange=".onCorrSourceFilter">
-                  <items>
-                    <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
-                  </items>
-                </SegmentedButton>
-                <SearchField width="18rem" class="sapUiSmallMarginBegin" liveChange=".onCorrSearch" placeholder="Search object, error, system"/>
-                <ToolbarSpacer/>
-                <Text text="{ui>/corrListCount} failures" class="opsAiCount"/>
-              </Toolbar>
-              <HBox class="opsAiSplit" wrap="NoWrap">
-                <VBox class="opsAiList">
-                  <List id="corrList" items="{ui>/corrList}" mode="SingleSelectMaster" selectionChange=".onCorrSelect"
-                    noDataText="No failures in the selected period" includeItemInSelection="true"
-                    showSeparators="Inner" growing="true" growingThreshold="50" busy="{ui>/loading}">
-                    <StandardListItem title="{ui>objectId}" description="{ui>category}" info="{ui>sourceLabel}"
-                      infoState="{= ${ui>source} === 'idoc' ? 'Information' : 'None'}" wrapping="true"/>
-                  </List>
-                </VBox>
-                <VBox class="opsAiDetail" busy="{ui>/corr/busy}" busyIndicatorDelay="0">
-                  <MessageStrip text="Select a failure on the left to record the steps that fixed it. Saved steps are kept in HANA and shown again in the AI analysis of the same message type or job."
-                    type="Information" showIcon="true" visible="{= !${ui>/corr/objectId}}" class="aiDisclaimer"/>
-                  <VBox visible="{= !!${ui>/corr/objectId}}" class="aiDialogBody">
-                    <HBox class="aiDialogHeader" wrap="NoWrap" alignItems="Center">
-                      <ObjectStatus text="{ui>/corr/sourceLabel}" state="None" class="{= ${ui>/corr/source} === 'idoc' ? 'opsPill opsPillIdoc' : 'opsPill opsPillJob'}"/>
-                      <Text text="{ui>/corr/category}" class="aiDialogSubtitle sapUiSmallMarginBegin"/>
-                    </HBox>
-                    <Text text="{ui>/corr/objectId}" class="aiDialogObject"/>
-                    <HBox wrap="Wrap" class="opsCorrFacts">
-                      <ObjectStatus text="{ui>/corr/system}" icon="sap-icon://it-system" class="sapUiTinyMarginEnd"/>
-                      <ObjectStatus text="{ui>/corr.statusText}" state="{ui>/corr/statusState}" icon="sap-icon://message-error" class="sapUiTinyMarginEnd" visible="{= !!${ui>/corr/statusText}}"/>
-                      <ObjectStatus text="{ui>/corr.metaText}" icon="sap-icon://history" visible="{= !!${ui>/corr.metaText}}"/>
-                    </HBox>
-                    <MessageStrip text="{ui>/corr/errorText}" type="Warning" showIcon="true" visible="{= !!${ui>/corr/errorText}}" class="opsCorrError"/>
-                    <MessageStrip text="{ui>/corr/message}" type="{ui>/corr/messageType}" visible="{= !!${ui>/corr/message}}" class="sapUiSmallMarginBottom"/>
-                    <Label text="Correction steps" labelFor="correctionText" class="opsFieldLabel"/>
-                    <TextArea id="correctionText" value="{ui>/corr/text}" rows="9" growing="false" growingMaxLines="14" width="100%"
-                      placeholder="Describe what you checked and what fixed it, step by step. Example: 1) Checked partner profile for logical system X. 2) Re-processed the IDoc with BD87. 3) Missing material master created, IDoc then posted."/>
-                    <HBox class="opsCorrActions" alignItems="Center" wrap="Wrap">
-                      <Button text="Save correction" type="Emphasized" icon="sap-icon://save" press=".onSaveCorrection" busy="{ui>/corr/saving}" enabled="{= !!${ui>/corr/text}}"/>
-                      <Button text="Edit existing" icon="sap-icon://edit" press=".onEditCorrection" visible="{= !!${ui>/corr/savedText} &amp;&amp; !${ui>/corr/editing}}" class="sapUiTinyMarginBegin"/>
-                      <Button text="Discard changes" icon="sap-icon://undo" press=".onResetCorrection" visible="{= !!${ui>/corr/savedText}}" class="sapUiTinyMarginBegin"/>
-                      <Button text="Delete" icon="sap-icon://delete" type="Transparent" press=".onDeleteCorrection" visible="{= !!${ui>/corr/savedText}}" class="sapUiTinyMarginBegin"/>
-                      <ToolbarSpacer/>
-                      <Text text="{= ${ui>/corr/savedText} ? 'Saved in HANA' : 'Not saved yet'}" class="opsAiCount"/>
-                    </HBox>
-                  </VBox>
-                </VBox>
-              </HBox>
-            </VBox>
-          </IconTabFilter>
-        </items>
-      </IconTabBar>
     </f:content>
   </f:DynamicPage>
 </mvc:View>

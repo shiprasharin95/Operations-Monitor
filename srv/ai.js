@@ -126,7 +126,7 @@ async function aiDestination() {
   throw error;
 }
 
-async function complete(system, user, { http = executeHttpRequest, resolve = aiDestination } = {}) {
+async function complete(system, user, { http = executeHttpRequest, resolve = aiDestination, temperature = 0.1, maxTokens = 900 } = {}) {
   const destination = await resolve();
   const url = property(destination, 'AiChatPath') || `/v2/inference/deployments/${DEPLOYMENT_ID}/chat/completions?api-version=${API_VERSION}`;
   const resourceGroup = property(destination, 'AiResourceGroup') || property(destination, 'URL.headers.AI-Resource-Group') || 'default';
@@ -135,7 +135,7 @@ async function complete(system, user, { http = executeHttpRequest, resolve = aiD
       method: 'post',
       url,
       headers: { 'content-type': 'application/json', 'AI-Resource-Group': resourceGroup },
-      data: { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.1, max_tokens: 900 },
+      data: { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature, max_tokens: maxTokens },
       timeout: TIMEOUT_MS
     }, { fetchCsrfToken: false });
     const text = response.data?.choices?.[0]?.message?.content;
@@ -175,4 +175,4 @@ async function analyzeFailure(failure, { refresh = false, ...deps } = {}) {
   return { ...base, analysis, analyzedAt: at };
 }
 
-module.exports = { analyzeFailure, userMessage, PROMPTS, DISCLAIMER, _cache: cache };
+module.exports = { analyzeFailure, complete, userMessage, PROMPTS, DISCLAIMER, _cache: cache };

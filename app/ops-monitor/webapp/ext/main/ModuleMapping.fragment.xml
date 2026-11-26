@@ -1,0 +1,56 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+  <Dialog id="moduleMappingDialog" title="SAP module mapping · {ui>/periodText}" contentWidth="72rem" contentHeight="70vh" resizable="true" draggable="true"
+    busy="{ui>/mappingBusy}" busyIndicatorDelay="0">
+    <subHeader>
+      <OverflowToolbar>
+        <SegmentedButton selectedKey="{ui>/mappingSource}" selectionChange=".onMappingFilter">
+          <items>
+            <SegmentedButtonItem key="" text="All"/><SegmentedButtonItem key="idoc" text="IDocs"/><SegmentedButtonItem key="job" text="Jobs"/>
+          </items>
+        </SegmentedButton>
+        <SegmentedButton selectedKey="{ui>/mappingBy}" selectionChange=".onMappingFilter" class="sapUiSmallMarginBegin">
+          <items>
+            <SegmentedButtonItem key="" text="Any"/><SegmentedButtonItem key="AI" text="AI"/><SegmentedButtonItem key="RULE" text="Rule"/>
+            <SegmentedButtonItem key="USER" text="Manual"/><SegmentedButtonItem key="NONE" text="Unassigned"/>
+          </items>
+        </SegmentedButton>
+        <SearchField width="16rem" liveChange=".onMappingSearch" placeholder="Search category or module"/>
+        <ToolbarSpacer/>
+        <Button text="Re-run AI classification" icon="sap-icon://ai" press=".onReclassify"
+          tooltip="Forget all AI decisions and classify again. Manual assignments are kept."/>
+      </OverflowToolbar>
+    </subHeader>
+    <content>
+      <MessageStrip type="Information" showIcon="true" class="sapUiSmallMargin"
+        text="Each message type (IDocs) and job is assigned to one SAP module: a manual assignment wins, then the rule table, then the AI. Change the module to override it; choose 'Automatic' to return to rules / AI."/>
+      <Table items="{ui>/mappingView}" growing="true" growingThreshold="50" sticky="ColumnHeaders" class="opsTable" noDataText="No failing categories in the selected period">
+        <columns>
+          <Column width="7rem"><Text text="Source"/></Column>
+          <Column><Text text="Message type / Job"/></Column>
+          <Column width="5rem" hAlign="End"><Text text="Errors"/></Column>
+          <Column width="15rem"><Text text="Module"/></Column>
+          <Column width="7rem"><Text text="Decided by"/></Column>
+          <Column minScreenWidth="Desktop" demandPopin="true"><Text text="Reason"/></Column>
+        </columns>
+        <items>
+          <ColumnListItem>
+            <ObjectStatus text="{= ${ui>source} === 'idoc' ? 'IDoc' : 'Job'}" state="None" class="{= ${ui>source} === 'idoc' ? 'opsPill opsPillIdoc' : 'opsPill opsPillJob'}"/>
+            <Text text="{= ${ui>displayCategory} || ${ui>category} }" tooltip="{= ${ui>displayCategory} !== ${ui>category} ? 'Message type: ' + ${ui>category} : '' }" wrapping="true"/>
+            <ObjectStatus text="{ui>error}" state="Error"/>
+            <Select selectedKey="{ui>selectedKey}" change=".onModuleOverride" width="100%" forceSelection="false"
+              items="{path: 'ui>/moduleOptions', templateShareable: false}">
+              <core:Item key="{ui>code}" text="{ui>label}"/>
+            </Select>
+            <ObjectStatus text="{= ${ui>classifiedBy} === 'USER' ? 'Manual' : (${ui>classifiedBy} === 'RULE' ? 'Rule' : (${ui>classifiedBy} === 'AI' ? 'AI ' + ${ui>confidence} + '%' : 'Not yet'))}"
+              icon="{= ${ui>classifiedBy} === 'AI' ? 'sap-icon://ai' : (${ui>classifiedBy} === 'USER' ? 'sap-icon://person-placeholder' : '')}"
+              state="{= ${ui>classifiedBy} === 'USER' ? 'Success' : (${ui>classifiedBy} === 'AI' ? 'Information' : 'None')}"/>
+            <Text text="{ui>reason}" wrapping="true" maxLines="2" tooltip="{ui>reason}"/>
+          </ColumnListItem>
+        </items>
+      </Table>
+    </content>
+    <endButton>
+      <Button text="Close" press=".onCloseModuleMapping"/>
+    </endButton>
+  </Dialog>
+</core:FragmentDefinition>

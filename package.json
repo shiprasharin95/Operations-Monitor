@@ -23,7 +23,7 @@
   "scripts": {
     "start": "node server.js",
     "watch": "cds watch",
-    "test": "node --test test/orchestrator.test.js test/corrections.test.js"
+    "test": "node --test test/orchestrator.test.js test/corrections.test.js test/module-classifier.test.js"
   },
   "cds": {
     "folders": {

@@ -33,8 +33,10 @@ service OperationsService {
   }
 
   type TrendPoint { bucket : String; idocError : Integer; jobError : Integer; idocSuccess : Integer; jobSuccess : Integer; idocWarning : Integer; jobWarning : Integer; }
-  type CategoryStat { source : String; sourceLabel : String; category : String; success : Integer; error : Integer; warning : Integer; inProcess : Integer; total : Integer; }
-  type TopError { source : String; sourceLabel : String; category : String; errorText : String; count : Integer; }
+  // displayCategory: what the dashboard shows. For IDocs with a blank/placeholder message type (ZZZZZ)
+  // it is the IDoc basic type (CREMAS06); category stays the real key.
+  type CategoryStat { source : String; sourceLabel : String; category : String; displayCategory : String; success : Integer; error : Integer; warning : Integer; inProcess : Integer; total : Integer; }
+  type TopError { source : String; sourceLabel : String; category : String; displayCategory : String; errorText : String; count : Integer; }
 
   type Failure {
     source      : String;
@@ -42,6 +44,8 @@ service OperationsService {
     sourceKey   : String;
     objectId    : String;
     category    : String;
+    displayCategory : String;
+    idocType    : String;
     system      : String;
     state       : String;
     statusText  : String;
@@ -49,6 +53,11 @@ service OperationsService {
     partner     : String;
     occurredAt  : Timestamp;
     detailUrl   : String;
+    // SAP module (SD, MM, PP, ...) of the failure's category; moduleBy = USER | RULE | AI | NONE
+    module           : String;
+    moduleText       : String;
+    moduleBy         : String;
+    moduleConfidence : Integer;
   }
   type Unavailable { source : String; message : String; }
   type FailureList { period : String; rows : array of Failure; unavailable : array of Unavailable; }
@@ -96,6 +105,57 @@ service OperationsService {
   // when possible and only used as a fallback for the stored row.
   type ManualCorrectionResult { source : String; sourceKey : String; correction : ManualCorrectionReference; }
   function getManualCorrection(source : String, sourceKey : String) returns ManualCorrectionResult;
+
+  // ---------------------------------------------------------------- errors per SAP module
+  // The module classifier agent assigns each category (IDoc message type / job name) to an SAP module:
+  // user override > rule table > AI (SAP AI Core, stored in HANA). Counts come from the monitors.
+  type ModuleStat {
+    source        : String;
+    sourceLabel   : String;
+    module        : String;
+    moduleText    : String;
+    error         : Integer;
+    warning       : Integer;
+    categoryCount : Integer;
+    aiClassified  : Integer;
+    topCategories : String;
+  }
+  type ModuleCategory {
+    source       : String;
+    category     : String;
+    displayCategory : String;
+    error        : Integer;
+    module       : String;
+    moduleText   : String;
+    classifiedBy : String;
+    confidence   : Integer;
+    reason       : String;
+  }
+  type ModuleBreakdown {
+    period      : String;
+    idocTotal   : Integer;
+    jobTotal    : Integer;
+    modules     : array of ModuleStat;
+    categories  : array of ModuleCategory;
+    unavailable : array of Unavailable;
+  }
+  type ModuleInfo { code : String; text : String; }
+  type ModuleClassificationResult {
+    source       : String;
+    category     : String;
+    module       : String;
+    moduleText   : String;
+    classifiedBy : String;
+    confidence   : Integer;
+    reason       : String;
+  }
+
+  function getModuleBreakdown(period : String) returns ModuleBreakdown;
+  function getModules() returns array of ModuleInfo;
+  // module '' or 'AUTO' removes the override.
+  action   setModuleClassification(source : String, category : String, module : String) returns ModuleClassificationResult;
+  // Forgets all AI decisions (overrides are kept); the next breakdown classifies again.
+  action   reclassifyModules() returns Integer;
   action   saveManualCorrection(
     source         : String,
     sourceKey      : String,
